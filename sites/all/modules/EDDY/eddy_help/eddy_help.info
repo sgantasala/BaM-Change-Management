@@ -1,0 +1,5 @@
+name = EDDY Help
+description = A page with some acronyms which are important to Education Dynamics.
+core = 7.x
+
+package = Eddy Core Business

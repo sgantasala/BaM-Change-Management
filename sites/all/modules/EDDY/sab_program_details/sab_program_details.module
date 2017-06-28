@@ -1,0 +1,1499 @@
+<?php
+
+
+/**
+ * Implements hook_menu().
+ */
+function sab_program_details_menu() {
+
+    $items = array();
+
+    $items["institutions/%"] = array(
+          'page callback' => '_sab_program_details',
+          'access callback' => TRUE
+    );
+
+    return $items;
+
+}
+
+
+/**
+ * Implements hook_eddy_forms_engine_build().
+ */
+function sab_program_details_eddy_forms_engine_build_alter(&$form_engine){
+
+    if(get_sab_program_details() != NULL){
+
+        $program_details = get_sab_program_details();
+
+        if(isset($program_details->programDetails)){
+
+            $form_engine['ProgramId'] = $program_details->programDetails->ProgramId;
+            $form_engine['InstitutionId'] = $program_details->programDetails->InstitutionId;
+            $form_engine['InstitutionName'] = $program_details->programDetails->InstitutionName;
+            $form_engine['ResetWorkflow'] = true;
+            $form_engine['WorkflowChangedCompleted'] = "function (data) { form_wizard_html_completed(data); };";
+
+            try{
+
+                db_set_active('nexus');
+
+                $template_id = !empty($program_details->programDetails->TemplateId) ? $program_details->programDetails->TemplateId : 0;
+
+                $result = db_query('SELECT TOP 1 TemplateId_Wizard FROM SABTemplateWizardMapping WHERE TemplateId_Program = :TemplateId_Program', array(":TemplateId_Program" => $template_id))->fetchField();
+
+                db_set_active();
+
+                if(!empty($result)){
+
+                    $form_engine['TemplateId'] = $result;
+
+                }
+
+            }
+            catch(Exception $e){
+
+                dpm($e);
+
+                db_set_active();
+
+            }
+
+        }
+
+    }
+
+}
+
+/**
+ * Callback to "graduate-schools-in-<country>/%" menu().
+ */
+function _sab_program_details() {
+    try{
+        $segments = explode('-', $_GET['q']);
+        $count_last = count($segments) - 1;
+        $program_id = $segments[$count_last];
+
+        if(is_numeric(arg(1))){
+            $program_id = arg(1);
+        }
+
+
+        $program_details = new stdclass;
+        if(is_numeric($program_id)){
+            $program_details = sab_program_details_get_program_details($program_id);
+
+            if(!is_null($program_details)){
+
+                drupal_add_js(array('program_id' => $program_id), 'setting');
+
+                $is_valid_url = sab_program_details_validate_url($program_details);
+                if($is_valid_url){
+
+                    $allDetails = new stdclass();
+                    $allDetails->programDetails = $program_details;
+                    $trackingAttributes = array(
+                         'data-program-product-id' => (isset($allDetails->programDetails->ProgramProductIdClick)) ? $allDetails->programDetails->ProgramProductIdClick : 0,
+                         'data-program-id' => $allDetails->programDetails->ProgramId,
+                         'data-position' => 0,
+                         'data-listing-type-id' => 1,
+                         'data-page' => 1,
+                         'data-track-clicks' => true,
+                     );
+
+                    $allDetails->programDetails->ClickTrackingAttributes = $trackingAttributes;
+                    $allDetails->programDetails->ShowClickThroughLink = FALSE;
+                    if(isset($allDetails->programDetails->ProgramProductIdClick) && !empty($allDetails->programDetails->ProgramProductIdClick)){
+
+                        $allDetails->programDetails->ShowClickThroughLink = TRUE;
+
+                    }
+
+                    if(!is_null($program_details)){
+                        if(!empty($program_details->ProgramTypeId)){
+
+                            $program_type_term = get_sab_program_details_program_type_term($program_details->ProgramTypeId);
+
+                            $meta_description_value = '';
+                            $address_list = '';
+
+                            if(!empty($program_details->ProgramAddressList)){
+                                foreach($program_details->ProgramAddressList as $key=>$address){
+                                    $address_list .= $address->City.', '. $address->CountryName.'; ';
+
+                                }
+                                $address_list = rtrim(rtrim($address_list,' '),';');
+                            }
+
+                            if(empty($address_list)){
+
+                                $meta_description_value = "Explore $program_type_term->name programs such as $program_details->ProgramName from $program_details->InstitutionName";
+                            }else{
+
+                                $meta_description_value = "Explore $program_type_term->name programs in $address_list such as $program_details->ProgramName from $program_details->InstitutionName";
+                            }
+                      
+                            //Put noindex/nofollow meta tag on all program details that are not Study Abroad/Full Degree Program Type or not Undergraduate program level.
+                            if(($program_details->ProgramTypeId != 4 && $program_details->ProgramTypeId != 1 )|| $program_details->ProgramLevelId<>24  ){
+
+                                $meta_description__noindex_value = 'noindex,nofollow';
+                                $meta_description_noindex = array(
+                                    '#tag' => 'meta',
+                                    '#attributes' => array( // Set up an array of attributes inside the tag
+                                        'name' => 'robots',
+                                        'content' => $meta_description__noindex_value,
+                                    ),
+                                );
+                                drupal_add_html_head($meta_description_noindex, 'program_no_index_meta');
+                                
+                            }
+                  
+                            if(!empty($meta_description_value)){
+
+                                $meta_description_value = preg_replace('/\s+/', ' ', $meta_description_value);
+                                $meta_description = array(
+                                    '#tag' => 'meta',
+                                    '#attributes' => array( // Set up an array of attributes inside the tag
+                                        'name' => 'description',
+                                        'content' => $meta_description_value,
+                                    ),
+                                );
+                                drupal_add_html_head($meta_description, 'program_details_meta_descrption_1');
+                            }
+                        }
+
+                        #region Creates Canonical URL when there is a parent program id
+                        try{
+
+                            $parent_program_id = db_query('SELECT parent_program_id FROM sab_eddy_program_parent_relationship WHERE program_id = :program_id', array(":program_id" => $program_id))->fetchField();
+
+                            if(!empty($parent_program_id)){
+
+                                db_set_active('nexus');
+
+                                $result = db_query('SELECT p.ProgramName, i.Name FROM [Program] p JOIN [Institution] i ON p.InstitutionId = i.InstitutionId WHERE ProgramId = :program_id', array(":program_id" => $parent_program_id))->fetchObject();
+
+                                db_set_active();
+
+                                if(!empty($result)){
+
+                                    $canonical_details = new stdClass;
+                                    $canonical_details->ProgramName = $result->ProgramName;
+                                    $canonical_details->InstitutionName = $result->Name;
+                                    $canonical_details->ProgramId = $parent_program_id;
+
+                                    $canonical_url = url(sab_program_details_create_url("institutions", $canonical_details), array('absolute' => TRUE));
+
+                                    if(!empty($canonical_url)){
+
+                                        $e = array(
+                                            "#tag" => "link",
+                                            "#attributes" => array (
+                                                "rel" => "canonical",
+                                                "href" => $canonical_url,
+                                            ),
+                                        );
+
+                                        drupal_add_html_head($e, 'program_details_canonical');
+
+                                    }
+
+                                }
+
+                            }
+
+                        }
+                        catch(Exception $e){
+
+                            dpm($e);
+
+                            db_set_active();
+
+                        }
+                        #endregion
+
+                    }
+
+                    $d["@context"] = "http://schema.org";
+                    $d["@type"] = "EducationalOrganization";
+
+                    if(isset($program_details->InstitutionName)){
+                        $d["name"] = $program_details->InstitutionName;
+                    }
+                    if(!empty($program_details->ProgramAddressList)){
+
+                        foreach($program_details->ProgramAddressList as $key=>$address){
+                            $d["address"]["@type"] = "PostalAddress";
+                            $d["address"]["addressLocality"] = $address->City;
+                            $d["address"]["addressRegion"] = $address->CountryName;
+                        }
+
+                    }
+
+                    if(isset($program_details->ProgramName)){
+                        $d["owns"]["@type"] = "product";
+                        $d["owns"]["name"] = $program_details->ProgramName;
+                    }
+                    if(isset($program_details->ProgramDescription)){
+                        $desc = substr($program_details->ProgramDescription, 0, strpos($program_details->ProgramDescription, "<br />"));
+                        $d["owns"]["description"] = htmlspecialchars_decode($desc);
+                    }
+
+                    if(get_reviews_total($program_details->ProgramId) > 0){
+
+                        $matches = array();
+                        $avg_rating = 0;
+                        $score_str = get_avg_rating_html($program_details->ProgramId);
+                        preg_match('/>(.*?)*span>/', $score_str, $matches);
+
+                        if(!empty($matches)) {
+                            $avg_rating = substr($matches[0], 1, strpos($matches[0], "</span>")-1);
+                        }
+
+                        $d["AggregateRating"]["@type"] = "AggregateRating";
+                        $d["AggregateRating"]["ratingValue"] = $avg_rating;
+                        $d["AggregateRating"]["reviewCount"] = get_reviews_total($program_details->ProgramId);
+                    }
+
+                    $script = '<script type="application/ld+json">' . str_replace('\\/', '/', json_encode($d)) . '</script>';
+
+                    $json_ld = array(
+                        '#type' => 'markup',
+                        '#markup' => $script,
+                    );
+
+                    drupal_add_html_head($json_ld, 'json_ld');
+
+                    set_sab_program_details($allDetails);
+
+                    return '';
+                }else{
+                    $redirect_url = sab_program_details_create_url('institutions', $program_details);
+                    drupal_goto($redirect_url, array(), 301);
+                }
+            }else{
+                drupal_not_found();
+            }
+        }else{
+            drupal_not_found();
+        }
+    }
+    catch(Exception $e){
+        dpm($e);
+        return drupal_not_found();
+
+    }
+}
+
+
+/**
+ * Sets Program Details so it can be used in blocks
+ */
+function set_sab_program_details($data = NULL) {
+
+    $output = &drupal_static(__FUNCTION__);
+    if (isset($data)) {
+        $output = $data;
+    }
+    return $output;
+
+}
+
+/**
+ * Gets Program Details so it can be used in block.
+ */
+function get_sab_program_details() {
+
+    return set_sab_program_details();
+
+}
+/**
+ * Gets Program Details Banner so it can be used in block.
+ */
+function get_sab_program_details_logo_markup() {
+
+
+    $markup = '';
+    try{
+        $current_details = get_sab_program_details();
+        if(!is_null($current_details)){
+
+            $logo_markup = ''; 
+            if($current_details->programDetails->PaidStatusTypeId != 1){
+                switch($current_details->programDetails->ProgramSFProductCode)
+                {
+                    //Flat Fee
+                    case 1:
+                    //CPL
+                    case 2:
+                        if (eddy_listing_show_visit_link( $current_details->programDetails)){
+                            // for Hybrid lead client
+                            $logo_markup = sab_listing_details_logo_link(eddy_build_institution_logo($current_details->programDetails, "150", array('link' => NULL, 'linkTitle' => '', 'attributes' => array('itemprop' => 'logo'))), $current_details->programDetails);
+                        }
+                        else{
+                            //for a Lead only client
+                            $logo_markup = eddy_build_institution_logo($current_details->programDetails, "150", array('link' => NULL, 'linkTitle' => '', 'attributes' => array('itemprop' => 'logo')));
+                        }
+                        break;
+                    //Top Tier
+                    case 3:
+                    //Master Sponsor
+                    case 4:
+                    //Hotbutton
+                    case 5:
+                        //added logic for Full Degree, Hybrid, Fraid HotButton, get the ClickThroughURL value, the paidstatustype (Fraid), and the SFProductCode (SAB_HB) from ME. 
+                        if ($current_details->programDetails->ClickThroughUrl <>"" )
+                        {
+                            $logo_markup = sab_listing_details_logo_link(eddy_build_institution_logo($current_details->programDetails, "150", array('link' => NULL, 'linkTitle' => '', 'attributes' => array('itemprop' => 'logo'))), $current_details->programDetails);
+                        }
+                        else{
+                            //for a Lead only client
+                            $logo_markup = eddy_build_institution_logo($current_details->programDetails, "150", array('link' => NULL, 'linkTitle' => '', 'attributes' => array('itemprop' => 'logo')));
+                        }
+                        //$logo_markup = sab_listing_logo_link(get_school_logo($current_details->programDetails, NULL, "", "150", array('attributes' => array('itemprop' => 'logo'))), $current_details->programDetails);
+                       //  $logo_markup = sab_listing_logo_link(eddy_build_institution_logo($current_details->programDetails, "150", array('link' => NULL, 'linkTitle' => '', 'attributes' => array('itemprop' => 'logo'))), $current_details->programDetails);
+                        break;
+                    //Textlink
+                    case 6:
+                        $logo_markup = eddy_listing_visit_link($current_details->programDetails->InstitutionName, $current_details->programDetails);
+                        break;
+                    default:
+                        //$logo_markup = sab_listing_logo_link(get_school_logo($current_details->programDetails, NULL, "", "150", array('attributes' => array('itemprop' => 'logo'))), $current_details->programDetails);
+                        $logo_markup = sab_listing_logo_link(eddy_build_institution_logo($current_details->programDetails, "150", array('link' => NULL, 'linkTitle' => '', 'attributes' => array('itemprop' => 'logo'))), $current_details->programDetails);
+                        break;
+                }
+
+                $markup .='<div class="program-details-logo">'.$logo_markup.'</div>';
+            }
+        }
+    }
+    catch(Exception $e){
+
+        dpm($e);
+        return drupal_not_found();
+
+    }
+    return $markup;
+
+}
+/**
+ * Gets Program Details Banner so it can be used in block.
+ */
+function get_sab_program_details_banner_markup() {
+
+
+    $markup = '';
+    try{
+        $current_details = get_sab_program_details();
+
+        if(!is_null($current_details)){
+
+            if($current_details->programDetails->PaidStatusTypeId != 1){
+                if(!empty($current_details->programDetails->ImageList)){
+                    $base_content_url = get_base_content_url();
+                    $url = $base_content_url.'logo/';
+                    $image_path = '';
+                    foreach($current_details->programDetails->ImageList as $key=>$img){
+                        if($img->ImageType == 5){
+                            $image_path = $url . $img->FileUrl;
+                            break;
+                        }
+                    }
+                    if(!empty($image_path)){
+                        $element = array(
+                                    '#type' => 'markup',
+                                    '#markup' => '<style>#header-w-banner {background-image: url("'.$image_path.'") !important;}</style>',
+                        );
+                        drupal_add_html_head($element, 'program_banner_bg');
+                    }
+                }
+            }
+			$markup .= '<div class="jumbotron program-detail-header">';
+            $markup .= '<div class="col-xs-9 col-md-6 name-section">';
+            $markup .= '<h3 class="provider-name">'.$current_details->programDetails->InstitutionName.'</h3>';
+            $markup .= '<h2 class="sab-program-name">'.$current_details->programDetails->ProgramName.'</h2>';
+            $markup .= '</div>';
+            $markup .= '<div class="pull-right col-xs-3 col-md-6 button-section">';
+            
+            // add fraid hotbutton logic
+            if($current_details->programDetails->PaidStatusTypeId != 1 ){
+                switch($current_details->programDetails->ProgramSFProductCode)
+                {
+                    //CPL
+                    case 2:
+                        $markup .= '<div class="button-link visit-site col-md-6">'.eddy_listing_visit_link("Visit Site", $current_details->programDetails).'</div>';
+                        $markup .= '<div class="button-link col-md-6"><a class="request_info" href="#eddy-form-container" role="button">Request Info</a></div>';
+                        break;
+                    //Flat Fee
+                    case 1:
+                    //Top Tier
+                    case 3:
+                    //Master Sponsor
+                    case 4:
+                    //Hotbutton
+                    case 5:
+                        // add fraid logo and visit site link. 
+                        $markup .= '<div class="button-link visit-site col-md-6">'.eddy_listing_visit_link("Visit Site", $current_details->programDetails).'</div>';
+                        $markup .= '<div class="button-link col-md-6"><a class="request_info" href="#eddy-form-container" role="button">Request Info</a></div>';
+                        break;
+                    //Textlink
+                    case 6:
+                        $markup .= '<div class="button-link visit-site col-md-6">'.eddy_listing_visit_link("Visit Site", $current_details->programDetails).'</div>';
+                        $markup .= '<div class="button-link col-md-6"><a class="request_info" href="#eddy-form-container" role="button">Request Info</a></div>';
+                        break;
+                    default:
+                        $markup .= '<div class="button-link col-md-6"><a class="request_info" href="#eddy-form-container" role="button">Request Info</a></div>';
+                        break;
+
+                }
+            }else{
+                $markup .= '<div class="button-link col-md-6"><a class="request_info" href="#eddy-form-container" role="button">Request Info</a></div>';
+            }
+            if(get_reviews_total($current_details->programDetails->ProgramId) > 0){
+                $total_reviews = get_reviews_total($current_details->programDetails->ProgramId);
+                $markup .= '<div class="avg-rating">' . get_avg_rating_html($current_details->programDetails->ProgramId) .' <span>' . $total_reviews .' '. (($total_reviews=='1')?'Review':'Reviews').'</span></div>';
+            }
+            $markup .= '</div>';
+            $markup .='';
+            $markup .='<div class="clearfix"></div>';
+            $markup .='</div>';
+        }
+    }
+    catch(Exception $e){
+
+        dpm($e);
+        return drupal_not_found();
+
+    }
+    return $markup;
+
+}
+
+/**
+ * Gets Program Details photos so it can be used in block.
+ */
+function get_sab_program_details_photos_markup() {
+
+    $markup = '';
+    try{
+        $base_content_url = get_base_content_url();
+        $details = get_sab_program_details();
+
+        if(!is_null($details)){
+            if($details->programDetails->PaidStatusTypeId != 1){
+                if(!empty($details->programDetails->ImageList)){
+
+                    $url = $base_content_url.'logo/';
+
+                    $images = array();
+                    foreach($details->programDetails->ImageList as $img){
+                        if($img->ImageType = 2){
+                            $image_path = $url . $img->FileUrl;
+
+                            $images[] = l(
+                                theme_image(
+                                    array(
+                                        'path' => $image_path,
+                                        'attributes' => array(
+                                            'height' => '64',
+                                            'width' => '64'
+                                        )
+                                    )
+                                ),
+                                $image_path,
+                                array('html' => TRUE, 'attributes' => array('data-toggle' => 'lightbox'))
+                            );
+                        }
+                    }
+
+                    $markup = theme_item_list(array('title'=> '', 'attributes' => array('class' => array('photo-gallery', 'clearfix')), 'type' => 'ul', 'items' => $images));
+
+                }
+            }
+        }
+    }
+    catch(Exception $e){
+
+        dpm($e);
+        return drupal_not_found();
+
+    }
+    return $markup;
+}
+
+/**
+ * Gets Program Details photos so it can be used in block.
+ */
+function get_sab_program_details_photos_slide_show_markup() {
+
+    $markup = '';
+    try{
+        $base_content_url = get_base_content_url();
+        $details = get_sab_program_details();
+        if(!is_null($details)){
+
+            if($details->programDetails->PaidStatusTypeId != 1 ){
+                if(!empty($details->programDetails->ImageList)){
+                    $has_images = false;
+                    foreach($details->programDetails->ImageList as $key=>$img){
+                        if($img->ImageType == 2){
+                            $has_images = true;
+                            break;
+                        }
+                    }
+                    if($has_images){
+                        $url = $base_content_url.'logo/';
+
+                        $images = array();
+                        foreach($details->programDetails->ImageList as $key=>$img){
+                            if($img->ImageType == 2){
+                                $images[] = $img;
+                            }
+                        }
+                        if(count($images) > 1){
+                            $markup = '<div id="program-detail-photo-carousel" class="carousel slide text-center" data-ride="carousel">';
+                            //Indicators
+                            $markup .='<ol class="carousel-indicators">';
+
+                            foreach($images as $key=>$img){
+
+                                if($img->ImageType == 2){
+
+                                    $index = array_search($key,array_keys($details->programDetails->ImageList));
+
+                                    if($index == 0){
+                                        $markup .='<li data-target="#program-detail-photo-carousel" data-slide-to="'.$index.'" class="active"></li>';
+                                    }else{
+                                        $markup .='<li data-target="#program-detail-photo-carousel" data-slide-to="'.$index.'" ></li>';
+                                    }
+                                }
+                            }
+                            $markup .='</ol>';
+                            //slides
+                            $markup .='<div class="carousel-inner" role="listbox">';
+                            foreach($images as $key=>$img){
+                                if($img->ImageType == 2){
+                                    $image_path = $url . $img->FileUrl;
+                                    $index = array_search($key,array_keys($details->programDetails->ImageList));
+
+                                    if($index == 0){
+
+                                        $markup .='<div class="text-center item active">';
+                                    }else{
+                                        $markup .='<div class="text-center item">';
+                                    }
+
+                                    $image_path = str_replace(' ','%20', $image_path);
+
+                                    if(module_exists('imagecache_external')){
+                                        $markup .= theme('imagecache_external', array(
+                                            'path' => $image_path,
+                                            'style_name'=> 'carousel_thumbnail',
+                                            'alt' => 'Druplicon',
+                                        ));
+                                    }else{
+                                        $markup .= theme_image(
+                                           array(
+                                               'path' => $image_path,
+                                               'attributes' => array(
+                                                   'height' => '315',
+                                                   'width' => '420'
+                                               )
+                                           ));
+                                    }
+                                    $markup .='</div>';
+                                }
+                            }
+                            $markup .='</div>';
+                            //controls
+                            $markup .= '<a class="left carousel-control" href="#program-detail-photo-carousel" role="button" data-slide="prev">
+                            <span class="glyphicon glyphicon-chevron-left" aria-hidden="true"></span>
+                            <span class="sr-only">Previous</span>
+                        </a>
+                        <a class="right carousel-control" href="#program-detail-photo-carousel" role="button" data-slide="next">
+                            <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>
+                            <span class="sr-only">Next</span>
+                        </a>';
+
+                            $markup .='</div>';
+                        }else{
+                            $markup = '<div id="program-detail-photo-carousel" class="text-center" >';
+
+                            $image_path = $url . $details->programDetails->ImageList[0]->FileUrl;
+                            $markup .='<div class="text-center item active">';
+                            $image_path = str_replace(' ','%20', $image_path);
+
+                            if(module_exists('imagecache_external')){
+                                $markup .= theme('imagecache_external', array(
+                                    'path' => $image_path,
+                                    'style_name'=> 'carousel_thumbnail',
+                                    'alt' => 'Druplicon',
+                                ));
+                            }else{
+                                $markup .= theme_image(
+                                   array(
+                                       'path' => $image_path,
+                                       'attributes' => array(
+                                           'height' => '315',
+                                           'width' => '420'
+                                       )
+                                   ));
+                            }
+
+
+                            $markup .='</div>';
+                        }
+
+                    }
+                }
+            }
+        }
+
+    }
+    catch(Exception $e){
+
+        dpm($e);
+        return drupal_not_found();
+
+    }
+    return $markup;
+}
+
+
+/**
+ * Gets Program Details videos so it can be used in block.
+ */
+function get_sab_program_details_videos_markup() {
+
+
+
+    $markup = "";
+    try{
+        $details = get_sab_program_details();
+        if(!is_null($details)){
+            if($details->programDetails->PaidStatusTypeId != 1 ){
+                if(!empty($details->programDetails->ImageList)){
+                    $current_video = null;
+                    foreach($details->programDetails->ImageList as $key=>$img){
+                        if($img->ImageType == 3){
+                            $current_video= $img;
+                            break;
+                        }
+                    }
+                    if(!is_null($current_video)){
+                        $markup .= '<div class="video-content">
+                                <object width="420" height="315">
+	                                <param name="allowFullScreen" value="true" />
+	                                <param name="allowscriptaccess" value="always" />
+	                                <param name="wmode" value="transparent" />
+	                                <embed allowscriptaccess="always" allowfullscreen="true" wmode="transparent" width="420px" height="320px" src="' . $current_video->FileUrl . '" />
+                                </object>
+                             </div>';
+                    }
+                }
+            }
+        }
+    }
+    catch(Exception $e){
+
+        dpm($e);
+        return drupal_not_found();
+
+    }
+    return $markup;
+
+}
+
+function get_sab_program_details_bottom_buttons_markup() {
+
+
+
+    $markup = "";
+    try{
+        $details = get_sab_program_details();
+        if(!is_null($details)){
+         
+            $markup .= '<div class="button-section">';
+            if($details->programDetails->PaidStatusTypeId != 1 && $details->programDetails->PaidStatusTypeId != 2){
+                switch($details->programDetails->ProgramSFProductCode)
+                {
+                    //CPL
+                    case 2:
+                        $markup .= '<div class="button-link visit-site col-md-6 col-sm-12">'.eddy_listing_visit_link("Visit Site", $details->programDetails).'</div>';
+                        $markup .= '<div class="button-link col-md-6 col-sm-12"><a class="request_info" href="#eddy-form-container" role="button">Request Info</a></div>';
+                        break;
+                    //Flat Fee
+                    case 1:
+                    //Top Tier
+                    case 3:
+                    //Master Sponsor
+                    case 4:
+                    //Hotbutton
+                    case 5:
+                    //Textlink
+                    case 6:
+                        $markup .= '<div class="button-link visit-site col-md-6 col-sm-12">'.eddy_listing_visit_link("Visit Site", $details->programDetails).'</div>';
+                        $markup .= '<div class="button-link col-md-6 col-sm-12"><a class="request_info" href="#eddy-form-container" role="button">Request Info</a></div>';
+                        break;
+                    default:
+                        $markup .= '<div class="button-link col-md-12 col-sm-12"><a class="request_info" href="#eddy-form-container" role="button">Request Info</a></div>';
+                        break;
+
+                }
+
+            }else
+            {
+                $markup .= '<div class="button-link col-md-12 col-sm-12"><a class="request_info" href="#eddy-form-container" role="button">Request Info</a></div>';
+            }
+
+            $markup .= '</div>';
+        }
+
+    }
+    catch(Exception $e){
+
+        dpm($e);
+        return drupal_not_found();
+
+    }
+    return $markup;
+
+}
+
+/**
+ * Gets Program Details videos so it can be used in block.
+ */
+function get_sab_program_details_reviews_markup() {
+
+    return '<div class="jumbotron"><div class="container"><h1>Hello, world!</h1><p>This is a simple hero unit, a simple jumbotron-style component for calling extra attention to featured content or information.</p><p><a class="btn btn-primary btn-lg" href="#" role="button">Learn more</a></p></div></div>';
+
+}
+
+/**
+ * Gets Program Details videos so it can be used in block.
+ */
+function get_sab_program_details_form_markup() {
+
+    return '<div class="jumbotron"><div class="container"><h1>Hello, world!</h1><p>This is a simple hero unit, a simple jumbotron-style component for calling extra attention to featured content or information.</p><p><a class="btn btn-primary btn-lg" href="#" role="button">Learn more</a></p></div></div>';
+
+}
+
+/**
+ * Gets Program Details videos so it can be used in block.
+ */
+function get_sab_program_details_summary_markup() {
+    $markup = "";
+    try{
+        $details = get_sab_program_details();
+        if(!is_null($details)){
+            //$markup .='<dl>';
+            //$markup .='<dt>Program Details:</dt>';
+            $markup .= $details->programDetails->ShortDescription;
+            //$markup .='</dl>';
+        }
+    }
+    catch(Exception $e){
+        dpm($e);
+    }
+    return $markup;
+}
+
+/**
+ * Gets Program Details videos so it can be used in block.
+ */
+function get_sab_program_details_description_markup() {
+    $markup = "";
+    try{
+        $details = get_sab_program_details();
+        if(!is_null($details)){
+            if(!empty($details->programDetails->ProgramTypeId)){
+                $degree_type_id = $details->programDetails->ProgramTypeId;
+                $degree_type_term = get_sab_program_details_program_type_term($degree_type_id);
+
+
+                //Location
+                if($degree_type_id == 1){
+                    if(!empty($details->programDetails->ProgramCampus)){
+                        $markup .='<dl>';
+                        $markup .='<dt>Location:</dt>';
+                        $address = $details->programDetails->ProgramCampus->City.', '. $details->programDetails->ProgramCampus->CountryName;
+                        $markup .="<dd>$address</dd>";
+                        $markup .='</dl>';
+                    }
+
+                }else{
+                    if(!empty($details->programDetails->ProgramAddressList)){
+                        $markup .='<dl>';
+                        $markup .='<dt>Location:</dt>';
+                        $address_list = '';
+                        foreach($details->programDetails->ProgramAddressList as $key=>$address){
+                            $address_list .= $address->City.', '. $address->CountryName.'; ';
+                        }
+                        $address_list = rtrim(rtrim($address_list,' '),';');
+                        $markup .="<dd>$address_list</dd>";
+                        $markup .='</dl>';
+                    }
+                }
+
+                //Program Type
+                if(!is_null($degree_type_term)){
+                    $degree_type_name = $degree_type_term->name;
+                    $markup .='<dl>';
+                    $markup .='<dt>Program Type:</dt>';
+                    $markup .="<dd>$degree_type_name</dd>";
+                    $markup .='</dl>';
+                }
+
+
+                //Degree Level
+                if(!empty($details->programDetails->ProgramLevelName)){
+                    $markup .='<dl>';
+                    $markup .='<dt>Degree Level:</dt>';
+                    $degree_level_name = $details->programDetails->ProgramLevelName;
+                    $markup .="<dd>$degree_level_name</dd>";
+                    $markup .='</dl>';
+                }
+
+                if(!empty($details->programDetails->TermList)){
+
+                    $term_list = '';
+                    foreach($details->programDetails->TermList  as $key=>$term){
+                        $taxonomy_term = get_sab_program_details_program_term_taxonomy_term($term);
+                        if(!empty($taxonomy_term)){
+                            $term_list .= " $taxonomy_term->name,";
+                        }
+                    }
+                    $term_list = rtrim(rtrim($term_list,' '),',');
+                    $markup .='<dl>';
+                    $markup .='<dt>Term:</dt>';
+                    $markup .="<dd>$term_list</dd>";
+                    $markup .='</dl>';
+                }
+                //Work Type
+                if($details->programDetails->ProgramTypeId == 5 || $details->programDetails->ProgramTypeId == 7){
+                    if(!empty($details->programDetails->WorkTypeList)){
+                        $work_type_list = '';
+                        foreach($details->programDetails->WorkTypeList as $key=>$work_type){
+                            $work_type_term = get_sab_program_details_program_taxonomy_term_by_bundle($work_type,'work_types');
+                            if(!empty($work_type_term)){
+                                $work_type_list .="$work_type_term->name, ";
+                            }
+                        }
+                        if(!empty($work_type_list)){
+                            $markup .='<dl>';
+                            $markup .='<dt>Work Types:</dt>';
+                            $work_type_list = rtrim(rtrim($work_type_list,' '),',');
+                            $markup .="<dd>$work_type_list</dd>";
+                            $markup .='</dl>';
+                        }
+                    }
+                }
+                if($details->programDetails->ProgramTypeId == 1 ){
+                    if(!empty($details->programDetails->SpecialtyList)){
+                        $specialty_list = '';
+                        foreach($details->programDetails->SpecialtyList as $key=>$specialty){
+                            $specialty_list .="$specialty->ItemValue, ";
+                        }
+                        $markup .='<dl>';
+                        $markup .='<dt>Specialty:</dt>';
+                        $specialty_list = rtrim(rtrim($specialty_list,' '),',');
+                        $markup .="<dd>$specialty_list</dd>";
+                        $markup .='</dl>';
+
+                    }
+                }
+
+                //Duration
+
+                if(!empty($details->programDetails->DurationList)){
+
+                    $duration_list = '';
+                    foreach($details->programDetails->DurationList as $key=>$duration){
+                        $duration_term = get_sab_program_details_program_taxonomy_term_by_bundle($duration,'durations');
+                        if(!empty($duration_term)){
+                            $duration_list .= "$duration_term->name, ";
+                        }
+                    }
+                    if(!empty($duration_list)){
+                        $markup .='<dl>';
+                        $markup .='<dt>Duration:</dt>';
+                        $duration_list = rtrim(rtrim($duration_list,' '),',');
+                        $markup .="<dd>$duration_list</dd>";
+                        $markup .='</dl>';
+                    }
+                }
+                if($details->programDetails->ProgramTypeId == 8 ){
+                    if(!empty($details->programDetails->LanguageId)){
+                        $languageId = $details->programDetails->LanguageId;
+                        $language_term = get_sab_program_details_program_taxonomy_term_by_bundle($languageId,'intensive_languages');
+                        if(!empty($language_term)){
+                            $markup .='<dl>';
+                            $markup .='<dt>Language:</dt>';
+                            $markup .="<dd>$language_term->name</dd>";
+                            $markup .='</dl>';
+                        }
+                    }
+                }
+                if($details->programDetails->ProgramTypeId == 6){
+                    if(!empty($details->programDetails->TeachAbroadTypeList)){
+
+                        $teach_abroad_list = '';
+                        foreach($details->programDetails->TeachAbroadTypeList as $key=>$teach_abroad_type){
+                            $teach_abroad_term = get_sab_program_details_program_taxonomy_term_by_bundle($teach_abroad_type,'teach_abroad_types');
+                            if(!empty($teach_abroad_term)){
+                                $teach_abroad_list .= "$teach_abroad_term->name, ";
+                            }
+                        }
+                        if(!empty($teach_abroad_list)){
+                            $markup .='<dl>';
+                            $markup .='<dt>Teach Abroad:</dt>';
+                            $teach_abroad_list = rtrim(rtrim($teach_abroad_list,' '),',');
+                            $markup .="<dd>$teach_abroad_list</dd>";
+                            $markup .='</dl>';
+                        }
+                    }
+                    if(!empty($details->programDetails->PlacementAudienceList)){
+
+                        $placement_audience_list = '';
+                        foreach($details->programDetails->PlacementAudienceList as $key=>$placement_audience){
+                            $placement_audience_term = get_sab_program_details_program_taxonomy_term_by_bundle($placement_audience,'placement_audiences');
+                            if(!empty($placement_audience_term)){
+                                $placement_audience_list .= "$placement_audience_term->name, ";
+                            }
+                        }
+                        if(!empty($placement_audience_list)){
+                            $markup .='<dl>';
+                            $markup .='<dt>Placement Audience:</dt>';
+                            $placement_audience_list = rtrim(rtrim($placement_audience_list,' '),',');
+                            $markup .="<dd>$placement_audience_list</dd>";
+                            $markup .='</dl>';
+                        }
+                    }
+                }
+
+                //Program Overview
+                $markup .='<h3>Program Overview</h3>';
+
+                if(!empty($details->programDetails->ProgramDescription)){
+
+                    $markup .='<dl >';
+                    $markup .='<dt>Program Description:</dt>';
+                    $markup .='<dd>'.$details->programDetails->ProgramDescription.'</dd>';
+                    $markup .='</dl>';
+
+                }
+
+                //Setting Description
+                if(!empty($details->programDetails->SettingDescription)){
+
+                    $markup .='<dl >';
+                    $markup .='<dt>Setting Description:</dt>';
+                    $markup .='<dd>'.$details->programDetails->SettingDescription.'</dd>';
+                    $markup .='</dl>';
+
+                }
+                //cost
+                if(!empty($details->programDetails->IsHybrid) || !empty($details->programDetails->AdditionalTuitionInfo ) || !empty($details->programDetails->InternationalTuition)){
+
+                    if(!empty($details->programDetails->InternationalTuition)){
+
+                        $markup .='<dl >';
+                        $markup .='<dt>Cost:</dt>';
+                        $markup .='<dd>'.$details->programDetails->InternationalTuition.'</dd>';
+                        $markup .='</dl>';
+                    }
+                    if(!empty($details->programDetails->AdditionalTuitionInfo)){
+
+                        $markup .='<dl >';
+                        $markup .='<dt>Cost Includes:</dt>';
+                        $markup .='<dd>'.$details->programDetails->AdditionalTuitionInfo.'</dd>';
+                        $markup .='</dl>';
+                    }
+                    if(!empty($details->programDetails->IsHybrid)){
+                        if(!empty($details->programDetails->IsHybrid)){
+                            $markup .='<dl >';
+                            $markup .='<dt>Format:</dt>';
+                            $markup .='<dd>Hybrid</dd>';
+                            $markup .='</dl>';
+                        }
+                    }
+                }
+                //Curriculum Highlights
+
+                if(!empty($details->programDetails->AccreditationDescription) || !empty($details->programDetails->FinancialAidInfo) || !empty($details->programDetails->Requirements) || !empty($details->programDetails->EligibilityRequirements) || !empty($details->programDetails->EligibilityRequirements) || !empty($details->programDetails->InternationalRequirements) || !empty($details->programDetails->Scholarships) || !empty($details->programDetails->ScholarshipsDescription)){
+                    if($details->programDetails->ProgramTypeId == 1 ){
+                        if(!empty($details->programDetails->AccreditationDescription) || !empty($details->programDetails->FinancialAidInfo) || !empty($details->programDetails->Requirements)){
+                            $markup .='<h3>Additional Program Information</h3>';
+                        }
+                    }else{
+                        if(!empty($details->programDetails->EligibilityRequirements) || !empty($details->programDetails->EligibilityRequirements) || !empty($details->programDetails->InternationalRequirements) || !empty($details->programDetails->Scholarships) || !empty($details->programDetails->ScholarshipsDescription)){
+                            $markup .='<h3>Additional Program Information</h3>';
+                        }
+                    }
+                    if($details->programDetails->ProgramTypeId == 1 ){
+                        if(!empty($details->programDetails->AccreditationDescription)){
+                            $markup .='<dl >';
+                            $markup .='<dt>Accreditation:</dt>';
+                            $markup .='<dd>'.$details->programDetails->AccreditationDescription.'</dd>';
+                            $markup .='</dl>';
+                        }
+
+                        if(!empty($details->programDetails->FinancialAidInfo)){
+                            $markup .='<dl>';
+                            $markup .='<dt>Financial Aid:</dt>';
+                            $markup .='<dd>'.$details->programDetails->FinancialAidInfo.'</dd>';
+                            $markup .='</dl>';
+                        }
+                        if(!empty($details->programDetails->AdditionalFinancialAidInfo)){
+                            $markup .='<dl >';
+                            $markup .='<dt>FinancialAid Info:</dt>';
+                            $markup .='<dd>'.$details->programDetails->AdditionalFinancialAidInfo.'</dd>';
+                            $markup .='</dl>';
+                        }
+                    }
+                    if(!empty($details->programDetails->EligibilityRequirements)){
+                        $markup .='<dl >';
+                        $markup .='<dt>Requirements:</dt>';
+                        $markup .='<dd>'.$details->programDetails->EligibilityRequirements.'</dd>';
+                        $markup .='</dl>';
+                    }
+                    if(!empty($details->programDetails->InternationalRequirements)){
+                        $markup .='<dl >';
+                        $markup .='<dt>International Requirements:</dt>';
+                        $markup .='<dd>'.$details->programDetails->InternationalRequirements.'</dd>';
+                        $markup .='</dl>';
+                    }
+                    if(!empty($details->programDetails->Scholarships)){
+                        $markup .='<dl >';
+                        $markup .='<dt>Scholarships:</dt>';
+                        $markup .='<dd>'.$details->programDetails->Scholarships.'</dd>';
+                        $markup .='</dl>';
+                    }
+                    if(!empty($details->programDetails->ScholarshipsDescription)){
+                        $markup .='<dl >';
+                        $markup .='<dt>Scholarships Description:</dt>';
+                        $markup .='<dd>'.$details->programDetails->ScholarshipsDescription.'</dd>';
+                        $markup .='</dl>';
+                    }
+
+                }
+
+
+                //Program Value
+
+                //Placement Audience
+
+
+            }
+        }
+
+    }
+    catch(Exception $e){
+
+        dpm($e);
+        return drupal_not_found();
+
+    }
+    return $markup;
+}
+
+
+/**
+ * Helper Function to determine if the user is viewing a Program Details Page.
+ */
+function is_program_details_page(){
+
+    $menu = menu_get_item();
+    $is_program_details_page = false;
+    if(isset($menu['page_callback']) && $menu['page_callback'] == '_sab_program_details'){
+        $details = get_sab_program_details();
+        if(!is_null($details)){
+            $is_valid_url = sab_program_details_validate_url($details->programDetails);
+            if($is_valid_url){
+                $is_program_details_page = true;
+            }
+        }
+    }
+
+    return $is_program_details_page;
+}
+/*
+function sab_program_details_theme($existing, $type, $theme, $path) {
+
+return array(
+'sab_program_details' => array(
+//'variables' => array('details_page' => null,'node' => NULL, 'program_details' => NULL, 'institutuion_details' => NULL, 'campus_details' => NULL),
+'template' => 'sab-program-details',
+'render element' => 'page'
+),
+);
+
+}
+ */
+
+/**
+ * Implements hook_block_view().
+ */
+function sab_program_details_block_view($delta="") {
+
+    $subject = 'Subject';
+    $content = 'content';
+
+    try{
+
+        switch($delta){
+            case 'sab_program_details_page_logo':
+                $subject = 'page_logo';
+                $content =  get_sab_program_details_logo_markup();
+                break;
+            case 'sab_program_details_page_banner':
+                $subject = 'page_banner';
+                $content =  get_sab_program_details_banner_markup();
+                break;
+            case 'sab_program_details_summary':
+                $subject = 'description';
+                $content =  get_sab_program_details_summary_markup();
+                break;
+            case 'sab_program_details_description':
+                $subject = 'description';
+                $content =  get_sab_program_details_description_markup();
+                break;
+            case 'sab_program_details_photos':
+                $subject = 'photos';
+                $content =  get_sab_program_details_photos_slide_show_markup();
+                break;
+            case 'sab_program_details_videos':
+                $subject = 'videos';
+                $content =  get_sab_program_details_videos_markup();
+                break;
+            case 'sab_program_details_reviews':
+                $subject = 'reviews';
+                $content =  get_sab_program_details_reviews_markup();
+                break;
+            case 'sab_program_details_form':
+                $subject = 'form';
+                $content =  get_sab_program_details_form_markup();
+                break;
+            case 'sab_program_details_buttons':
+                $subject = 'form';
+                $content =  get_sab_program_details_bottom_buttons_markup();
+                break;
+
+        }
+    }
+    catch(Exception $e){
+
+        dpm($e);
+        return drupal_not_found();
+
+    }
+    $block['subject'] = $subject;
+    $block['content'] = $content;
+
+    return $block;
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function sab_program_details_block_info() {
+    $blocks = array();
+
+    try{
+        $blocks['sab_program_details_page_logo'] = array(
+        'info' => t('SAB: Program Details Page logo'),
+        'title' => 'SAB: Program Details Page logo',
+        'cache' => DRUPAL_CACHE_PER_PAGE,
+        'visibility' => BLOCK_VISIBILITY_PHP,
+        'pages' => '<?php $menu_item = menu_get_item(); if($menu_item["page_callback"] == "_sab_program_details"){ return TRUE; } ?>',
+      );
+        $blocks['sab_program_details_page_banner'] = array(
+          'info' => t('SAB: Program Details Page Banner'),
+          'title' => 'SAB: Program Details Page Banner',
+          'cache' => DRUPAL_CACHE_PER_PAGE,
+          'visibility' => BLOCK_VISIBILITY_PHP,
+          'pages' => '<?php $menu_item = menu_get_item(); if($menu_item["page_callback"] == "_sab_program_details"){ return TRUE; } ?>',
+        );
+        $blocks['sab_program_details_summary'] = array(
+          'info' => t('SAB: Program Details - Summary'),
+          'title' => 'SAB: Program Details - Summary',
+          'cache' => DRUPAL_CACHE_PER_PAGE,
+          'visibility' => BLOCK_VISIBILITY_PHP,
+          'pages' => '<?php $menu_item = menu_get_item(); if($menu_item["page_callback"] == "_sab_program_details"){ return TRUE; } ?>',
+        );
+        $blocks['sab_program_details_description'] = array(
+         'info' => t('SAB: Program Details - Description'),
+         'title' => 'SAB: Program Details - Description',
+         'cache' => DRUPAL_CACHE_PER_PAGE,
+         'visibility' => BLOCK_VISIBILITY_PHP,
+         'pages' => '<?php $menu_item = menu_get_item(); if($menu_item["page_callback"] == "_sab_program_details"){ return TRUE; } ?>',
+       );
+        $blocks['sab_program_details_photos'] = array(
+            'info' => t('SAB: Program Details - Photos'),
+            'title' => 'SAB: Program Details - Photos',
+            'cache' => DRUPAL_CACHE_PER_PAGE,
+            'visibility' => BLOCK_VISIBILITY_PHP,
+            'pages' => '<?php $menu_item = menu_get_item(); if($menu_item["page_callback"] == "_sab_program_details"){ return TRUE; } ?>',
+        );
+        $blocks['sab_program_details_videos'] = array(
+            'info' => t('SAB: Program Details - Videos'),
+            'title' => 'SAB: Program Details - Videos',
+            'cache' => DRUPAL_CACHE_PER_PAGE,
+            'visibility' => BLOCK_VISIBILITY_PHP,
+            'pages' => '<?php $menu_item = menu_get_item(); if($menu_item["page_callback"] == "_sab_program_details"){ return TRUE; } ?>',
+        );
+        $blocks['sab_program_details_reviews'] = array(
+           'info' => t('SAB: Program Details - reviews'),
+           'title' => 'SAB: Program Details - Reviews',
+           'cache' => DRUPAL_CACHE_PER_PAGE,
+           'visibility' => BLOCK_VISIBILITY_PHP,
+           'pages' => '<?php $menu_item = menu_get_item(); if($menu_item["page_callback"] == "_sab_program_details"){ return TRUE; } ?>',
+       );
+        $blocks['sab_program_details_form'] = array(
+           'info' => t('SAB: Program Details - form'),
+           'title' => 'SAB: Program Details - form',
+           'cache' => DRUPAL_CACHE_PER_PAGE,
+           'visibility' => BLOCK_VISIBILITY_PHP,
+           'pages' => '<?php $menu_item = menu_get_item(); if($menu_item["page_callback"] == "_sab_program_details"){ return TRUE; } ?>',
+       );
+        $blocks['sab_program_details_buttons'] = array(
+         'info' => t('SAB: Program Details - Bottom Button Blocks'),
+         'title' => 'SAB: Program Details - Bottom Button',
+         'cache' => DRUPAL_CACHE_PER_PAGE,
+         'visibility' => BLOCK_VISIBILITY_PHP,
+         'pages' => '<?php $menu_item = menu_get_item(); if($menu_item["page_callback"] == "_sab_program_details"){ return TRUE; } ?>',
+     );
+    }
+    catch(Exception $e){
+
+        dpm($e);
+        return drupal_not_found();
+
+    }
+    return $blocks;
+
+}
+
+function sab_program_details_get_program_details($program_id, $campus_id = 0) {
+    $output = null;
+    try{
+        $cid = "program_details_$program_id-$campus_id";
+
+        if ($cache = cache_get($cid, 'cache_eddy_program_details')){
+            if ($cache->expire > REQUEST_TIME && get_current_state() != 'beta_'){
+                $details = $cache->data;
+
+            }
+            else{
+                $details = eddy_services_get_program_details($program_id, $campus_id);
+                cache_set($cid, $details, 'cache_eddy_program_details', time() + 300);
+            }
+        }else{
+            $details = eddy_services_get_program_details($program_id, $campus_id);
+            cache_set($cid, $details, 'cache_eddy_program_details', time() + 300);
+        }
+
+        $output = array();
+
+        if(!empty($details->GetProgramDetailsResult->ProgramDetails)){
+            $output = $details->GetProgramDetailsResult->ProgramDetails;
+        }
+
+
+    }
+    catch(Exception $e){
+
+        dpm($e);
+        return drupal_not_found();
+
+    }
+    return $output;
+}
+/**
+ * Implements hook_process_html().
+ */
+function sab_program_details_process_html(&$vars){
+
+    //Sets custom <title> tag for Program Details Pages.
+    if(is_program_details_page()){
+
+        $all_details = get_sab_program_details();
+
+        //$campus_details = $all_details->campusDetails;
+        $program_details = $all_details->programDetails;
+
+
+
+        if(!is_null($program_details)){
+            if(!empty($program_details->ProgramTypeId)){
+
+                $program_type_term = get_sab_program_details_program_type_term($program_details->ProgramTypeId);
+
+                $title = '';
+
+                $address_list = '';
+
+                if(!empty($program_details->ProgramAddressList)){
+                    foreach($program_details->ProgramAddressList as $key=>$address){
+                        $address_list .= $address->City.', '. $address->CountryName.'; ';
+
+                    }
+                    $address_list = rtrim(rtrim($address_list,' '),';');
+                }
+
+                if(empty($address_list)){
+                    $title = "$program_details->InstitutionName $program_type_term->name program $program_details->ProgramName";
+
+                }else{
+                    $title = "$program_details->InstitutionName $program_type_term->name program $program_details->ProgramName in $address_list";
+
+                }
+
+                if(!empty($title)){
+                    $title = preg_replace('/\s+/', ' ', $title);
+                    $vars['head_title'] = $title;
+                }
+            }
+        }
+
+    }
+
+}
+/**
+ * Replace any unwanted Characters from URL. Just pass in string.
+ * @param string URL to clean
+ */
+function sab_program_details_clean_url(&$url){
+	$url = preg_replace("/[^a-zA-Z0-9\/_|+ -]/", '', $url);
+	$url = strtolower(trim($url, '-'));
+	$url = preg_replace("/[\/_|+ -]+/", '-', $url);
+}
+
+/**
+ * Builds Program URL
+ * @param string Campus URL
+ * @param string Program Name
+ * @param int Program Id
+ * @param int Campus Id
+ */
+function sab_program_details_create_url($base_url, $details){
+    $output= null;
+    $base_url = ltrim($base_url, '/');
+
+    if(!is_null($details)){
+        //If it passes the null check lets make sure we have a stdclass.
+        if(is_object($details)){
+
+            if(property_exists($details, 'ProgramId') ){
+                $program_name_url = $details->ProgramName;
+                $institution_name_url = $details->InstitutionName;
+                $program_id = $details->ProgramId;
+                sab_program_details_clean_url($program_name_url);
+                sab_program_details_clean_url($institution_name_url);
+                $output = "$base_url/$institution_name_url/$program_name_url-$program_id";
+            }
+        }
+    }
+	return $output;
+
+}
+function sab_program_details_validate_url($program_details){
+    $is_valid_url = false;
+    try{
+        $program_url_path = sab_program_details_create_url('institutions',$program_details);
+        if(current_path() == $program_url_path)
+        {
+            $is_valid_url = true;
+        }
+    }
+    catch(Exception $e){
+
+        dpm($e);
+        return drupal_not_found();
+
+    }
+    return $is_valid_url;
+}
+
+/**
+ * Gets program type term.
+ */
+function get_sab_program_details_program_type_term($external_id) {
+    $existing_term = null;
+    $query = new EntityFieldQuery();
+    $query->entityCondition('entity_type', 'taxonomy_term')
+            ->entityCondition('bundle', 'program_types')
+            ->fieldCondition('field_external_id', 'value', $external_id, '=');
+
+    $result = $query->execute();
+
+    if (isset($result['taxonomy_term'])) {
+        $existing_tids = array_keys($result['taxonomy_term']);
+        $existing_term = taxonomy_term_load($existing_tids[0]);
+    }
+
+    return $existing_term;
+
+}
+
+/**
+ * Gets program type term.
+ */
+function get_sab_program_details_program_term_taxonomy_term($external_id) {
+    $existing_term = null;
+    $query = new EntityFieldQuery();
+    $query->entityCondition('entity_type', 'taxonomy_term')
+            ->entityCondition('bundle', 'terms')
+            ->fieldCondition('field_external_id', 'value', $external_id, '=');
+
+    $result = $query->execute();
+
+    if (isset($result['taxonomy_term'])) {
+        $existing_tids = array_keys($result['taxonomy_term']);
+        $existing_term = taxonomy_term_load($existing_tids[0]);
+    }
+
+    return $existing_term;
+
+}
+/**
+ * Gets program type term.
+ */
+function get_sab_program_details_program_taxonomy_term_by_bundle($external_id,$bundle_name) {
+    $existing_term = null;
+    $query = new EntityFieldQuery();
+    $query->entityCondition('entity_type', 'taxonomy_term')
+            ->entityCondition('bundle', $bundle_name)
+            ->fieldCondition('field_external_id', 'value', $external_id, '=');
+
+    $result = $query->execute();
+
+    if (isset($result['taxonomy_term'])) {
+        $existing_tids = array_keys($result['taxonomy_term']);
+        $existing_term = taxonomy_term_load($existing_tids[0]);
+    }
+
+    return $existing_term;
+
+}
+
+
+function get_program_image_path($program) {
+    $path = '';
+    $country_terms = get_country_terms();
+    if(!empty($program->AddressList)){
+        $country_name = strtolower(trim($program->AddressList[0]->CountryName));
+
+        if(array_key_exists($country_name, $country_terms)){
+
+            if(!empty($country_terms[$country_name]->field_image) && !empty($country_terms[$country_name]->field_image[LANGUAGE_NONE][0]) && file_exists($country_terms[$country_name]->field_image[LANGUAGE_NONE][0]['uri'])){
+                $path = file_create_url($country_terms[$country_name]->field_image[LANGUAGE_NONE][0]['uri']);
+            }else{
+                $path = "/sites/default/files/images/background-image.jpg";
+            }
+
+        }
+    }
+    return $path;
+}

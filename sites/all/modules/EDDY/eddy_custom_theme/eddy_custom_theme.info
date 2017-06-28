@@ -1,0 +1,5 @@
+name = EDDY Custom Theme.
+description = A module with custom theme rules.
+core = 7.x
+
+package = Eddy Core Business

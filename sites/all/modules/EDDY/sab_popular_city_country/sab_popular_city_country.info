@@ -1,0 +1,7 @@
+name = SAB Manage Popular City Country 
+description = This is a module to manage SAB popular cities, countries
+core = 7.x
+package = Eddy Core Business
+Version = "7.x-2.9"
+
+dependencies[] = sab_sitemap

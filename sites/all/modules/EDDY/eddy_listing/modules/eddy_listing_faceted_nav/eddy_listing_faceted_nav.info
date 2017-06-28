@@ -1,0 +1,9 @@
+name = EDDY Listings Faceted Navigation
+description = This module has been depricated, please do not use it.
+dependencies[] = eddy_listing
+core = 7.x
+package = Eddy Core Business
+
+stylesheets[all][] = slider.css
+scripts[] = slider.js
+scripts[] = campus.js

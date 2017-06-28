@@ -1,0 +1,1139 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function eddy_forms_engine_menu() {
+	$items['form/%'] = array(
+		'page callback' => 'display_eddy_forms_engine',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK,
+	);
+	$items['form'] = array(
+		'page callback' => 'display_eddy_forms_engine',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK,
+	);
+	$items['form/thank-you'] = array(
+		'page callback' => 'display_eddy_thank_you_page',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK,
+	);
+	$items['admin/config/system/eddy-forms-engine'] = array(
+		'title' => 'EDDY Form Content Settings',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('eddy_forms_engine_contents_settings_form'),
+		'access arguments' => array('administer eddy forms engine'),
+		'type' => MENU_NORMAL_ITEM,
+	);
+	$items['admin/structure/eddy_forms_engine'] = array(
+		'title' => 'Forms Engine Admin',
+		'description' => 'Add new form block to your site, edit existing forms, and delete forms.',
+		'page callback' => 'eddy_forms_engine_overview_page',
+		'access callback' => 'user_access',
+		'access arguments' => array('administer eddy forms engine'),
+		'file' => 'eddy_forms_engine.admin.inc',
+	);
+	$items['admin/structure/eddy_forms_engine/add'] = array(
+		'title' => 'Add Form',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('eddy_forms_engine_add_form'),
+		'access arguments' => array('administer eddy forms engine'),
+		'type' => MENU_LOCAL_ACTION,
+		'file' => 'eddy_forms_engine.admin.inc',
+	);
+	$items['admin/structure/eddy_forms_engine/manage/%/edit'] = array(
+		'title' => 'Edit Form',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('eddy_forms_engine_edit_form', 'edit', 4),
+		'access arguments' => array('administer eddy forms engine'),
+		'type' => MENU_NORMAL_ITEM,
+		'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+		'file' => 'eddy_forms_engine.admin.inc',
+	);
+
+	$items['admin/structure/eddy_forms_engine/manage/%/delete'] = array(
+		'title' => 'Delete Form',
+		'page callback' => 'eddy_forms_engine_delete_form_page',
+		'page arguments' => array(4),
+		'access arguments' => array('administer eddy forms engine'),
+		'file' => 'eddy_forms_engine.admin.inc',
+	);
+
+	return $items;
+
+}
+
+
+/**
+ * Implements hook_permission().
+ */
+function eddy_forms_engine_permission() {
+	return array(
+		'administer eddy forms engine' => array(
+		  'title' => 'Administer eddy forms engine content settings.'
+		),
+	);
+}
+
+
+/**
+ * Implements hook_theme().
+ */
+function eddy_forms_engine_theme() {
+	$items = array();
+	$items['eddy_forms_engine_main'] = array(
+		'variables' => array('forms_engine_settings' => NULL, 'school' => NULL, 'form' => NULL),
+		'template' => 'eddy-forms-engine-main',
+	);
+	$items['eddy_forms_engine_thank_you'] = array(
+		'variables' => array('form' => NULL),
+		'template' => 'eddy-forms-engine-thank-you',
+	);
+	return $items;
+}
+
+
+/**
+ * Implements hook_init().
+ */
+function eddy_forms_engine_init() {
+
+    $e = array(
+              '#tag' => 'script',
+              '#value' => 'var FormsEngine = FormsEngine || {};',
+              '#attributes' => array(
+                'type' => 'text/javascript',
+              ),
+            );
+
+    drupal_add_html_head($e, 'forms_engine_open_tag');
+
+}
+
+
+/**
+ * Sets the institution Details which are returned from the Service
+ */
+function set_eddy_forms_engine_institution_details($data = NULL) {
+
+    $output = &drupal_static(__FUNCTION__);
+    if (isset($data)) {
+        $output = $data;
+    }
+    return $output;
+
+}
+
+
+/**
+ * Gets the institution Details which are returned from the Service
+ */
+function get_eddy_forms_engine_institution_details() {
+
+    return set_eddy_forms_engine_institution_details();
+
+}
+
+
+/**
+ * Return an associative array of the custom Form names.
+ *
+ * @return
+ *   An array with the machine-readable names as the keys, and human-readable
+ *   titles as the values.
+ */
+function eddy_forms_engine_get_forms() {
+
+    if ($custom_forms = eddy_forms_engine_load_all()) {
+        foreach ($custom_forms as $form_engine_id => $form_engine) {
+            $custom_forms[$form_engine_id] = array('name' => t($form_engine['name']));
+        }
+        asort($custom_forms);
+    }
+
+    return $custom_forms;
+
+}
+
+
+/**
+ * Implements hook_block_info().
+ */
+function eddy_forms_engine_block_info() {
+
+    $forms = eddy_forms_engine_get_forms();
+
+    $blocks = array();
+    foreach ($forms as $index => $data) {
+
+        $blocks[$index] = array(
+            'info' => 'EDDY FORMS ENGINE: ' . $data['name'],
+            'cache' => DRUPAL_NO_CACHE,
+        );
+
+    }
+
+    $blocks['form_redirect_place_holder'] = array(
+        'info' => 'EDDY FORMS ENGINE: Form Redirect Place Holder',
+    );
+
+    return $blocks;
+
+}
+
+
+/**
+ * Implements hook_block_view().
+ */
+function eddy_forms_engine_block_view($delta = '') {
+
+    if($delta == 'form_redirect_place_holder'){
+        $data['content'] = get_eddy_forms_engine_contents();
+    }else{
+        $data['content'] = get_eddy_forms_engine_contents($delta);
+    }
+
+    if(empty($data['content'])){
+        $data = null;
+    }
+
+    return $data;
+
+}
+
+
+/**
+ * Menu callback for the Form.
+ */
+function display_eddy_forms_engine(){
+
+    $application_id = variable_get('eddy_core_application_id');
+	$school_details = new stdclass();
+
+    #region Get Institution Details
+	if(is_numeric(arg(1))){
+
+		$school_details = _eddy_forms_engine_get_institution_details_from_service(arg(1));
+
+        //eLearners Only. When the URL uses the School Details Alias
+	}else if($application_id == 2){
+
+        $node_path = array();
+
+        $school_url = explode('/', variable_get('pathauto_node_school_pattern'));
+	    $url = $school_url[0] . "/". arg(1);
+	    $node_path = explode('/', drupal_lookup_path('source', $url));
+
+        //eLearners Only Form Page
+	    if(isset($node_path[1]) && is_numeric($node_path[1])){
+
+		    if(get_current_state() == "beta_"){
+
+			    $vid = get_node_beta_vid($node_path[1]);
+
+                $school_details = _eddy_forms_engine_get_institution_details_from_nid($node_path[1], $vid);
+
+			    if(!empty($vid)){
+				    drupal_set_message('You are viewing the <strong>BETA</strong> version of this content. Please contact your <strong>Education Dynamics<sup style="font-size:.6em;">&reg;</sup></strong>, Account Manager to move this to our <strong>LIVE</strong> site.', 'warning');
+			    }
+
+		    }else{
+
+			    $school_details = _eddy_forms_engine_get_institution_details_from_nid($node_path[1]);
+
+		    }
+
+        }
+
+        if(isset($school_details->node)){
+
+            $node = $school_details->node;
+
+            if(!empty($node->field_accreditation_description[LANGUAGE_NONE][0]['value'])){
+                $school_details->Accreditation = $node->field_accreditation_description[LANGUAGE_NONE][0]['value'];
+            }
+
+            if(!empty($node->field_testimonial[LANGUAGE_NONE][0]['value'])){
+                $school_details->student_quotes = $node->field_testimonial[LANGUAGE_NONE][0]['value'];
+            }
+
+        }
+
+	}
+
+    set_eddy_forms_engine_institution_details($school_details);
+    #endregion
+
+
+    #region Redirect Invalid Traffic
+	$redirect = TRUE;
+
+	if(!empty($school_details->InstitutionId)){
+
+        if(variable_get('eddy_core_application_name') == 'gradschools'){ //Logic for Gradschools Forms since they do not check for Institution Level FailedValidation.
+
+            $institution_results = eddy_services_get_listings(array('institution' => array($school_details->InstitutionId)), 'GetPrograms');
+
+            if(isset($institution_results->GetProgramsResult->ProgramList)){
+
+                foreach($institution_results->GetProgramsResult->ProgramList as $program){
+
+                    //Set Redirect to FALSE if Any Program in the list are NOT Inquery Disabled.
+                    if(!$program->InquiryDisabled){
+
+                        $redirect = FALSE;
+
+                    }
+
+                }
+
+            }
+
+        }else{ //Logic for all other sites.
+
+            if(!empty($school_details->MatchingResponse->GetInstitutionDetailsResult->InstitutionDetails)){
+
+                $redirect = $school_details->MatchingResponse->GetInstitutionDetailsResult->InstitutionDetails->FailedValidation;
+
+            }
+
+        }
+
+	}
+
+
+
+	if($redirect){
+
+		switch(variable_get('eddy_core_application_name')){
+
+			case 'elearners':
+				$to = "colleges";
+                break;
+			case 'earn_my_degree':
+				$to = "online-colleges-schools";
+                break;
+			default:
+				$to = "<front>";
+                break;
+
+		}
+
+		drupal_goto($to);
+
+	}
+    #endregion
+
+
+	$element = array(
+		'#tag' => 'meta',
+		'#attributes' => array(
+			'content' => 'noindex,nofollow',
+			'name' => 'robots',
+		),
+	);
+
+	drupal_add_html_head($element, 'meta_no_index');
+
+    //CSS Files for form Page
+    drupal_add_css(drupal_get_path('module', 'eddy_forms_engine') . "/style/eddy_forms_engine.css");
+    drupal_add_css(drupal_get_path('module', 'eddy_forms_engine') . "/style/program_template_responsive.css");
+
+    //JS Files for Form Page
+    drupal_add_js(drupal_get_path('module', 'eddy_forms_engine') . "/js/form_page.js");
+
+	$form = get_published_form();
+
+	$html = theme('eddy_forms_engine_main', array('forms_engine_settings' => NULL, 'school' => $school_details, 'form' => $form));
+
+	return $html;
+
+}
+
+
+/**
+ * Menu callback for the Thank You page.
+ */
+function display_eddy_thank_you_page(){
+
+	$form_settings = get_published_form();
+
+	$html = theme('eddy_forms_engine_thank_you', array('form' => $form_settings));
+
+	if(module_exists('cdn') && cdn_status_is_enabled())
+		cdn_post_render_html_alter($html);
+
+	$GLOBALS['conf']['cache'] = false;
+
+    //JS Files for Thank you Page
+    drupal_add_js(drupal_get_path('module','eddy_forms_engine') ."/js/jquery.validate.js");
+    drupal_add_js(drupal_get_path('module','eddy_forms_engine') ."/js/jquery.json-2.4.min.js");
+    drupal_add_js(variable_get('eddy_forms_engine_service_domain') . "/Static/GetGlobal");
+
+    //CSS files for Thank You page
+    drupal_add_css(drupal_get_path('module', 'eddy_forms_engine') . "/style/eddy_forms_engine.css");
+    drupal_add_css(drupal_get_path('module', 'eddy_forms_engine') . "/style/program_template_responsive.css");
+
+    //JS Files for Thank you Page
+    drupal_add_js(drupal_get_path('module','eddy_forms_engine') ."/js/thank_you_page.js");
+
+    $ty_success_msg = (!empty($form_settings->thank_you_success_message)) ? $form_settings->thank_you_success_message : variable_get('thank_you_success_lead_msg');
+    $ty_failed_msg = (!empty($form_settings->thank_you_failed_message)) ? $form_settings->thank_you_failed_message : variable_get('thank_you_failed_lead_msg');
+
+    drupal_add_js(array(
+        'eddy_forms_engine' => array(
+            'thank_you_success_lead_msg' => $ty_success_msg,
+            'thank_you_failed_lead_msg' => $ty_failed_msg,
+            'forms_engine_domain' => variable_get('eddy_forms_engine_service_domain'),
+            'pixel_service_domain' => variable_get('eddy_pixel_service_domain')
+            )
+        ), 'setting');
+
+	return $html;
+
+}
+
+
+/**
+ * Get Forms Content
+ */
+function get_eddy_forms_engine_contents($form_id = 0){
+
+    $qs = array_change_key_case(drupal_get_query_parameters($_GET), CASE_LOWER);
+
+    if(isset($qs["form"]) && is_numeric($qs["form"])){
+
+        $form_id = $qs["form"];
+
+    }else if($form_id == 0){
+
+        $form_id = variable_get('eddy_forms_engine_published_form_id');
+
+    }
+
+	$form_settings = eddy_forms_engine_get_form_fields($form_id);
+
+    $form_engine = array();
+
+    #region Set Program Id
+    $programId = 0;
+
+    if(is_eddy_forms_engine_section() && arg(2) && is_numeric(arg(2))){
+
+        $programId = arg(2);
+
+    }
+
+    if($programId > 0){
+        $form_engine['ProgramId'] = $programId;
+    }
+    #endregion
+
+	if(isset($form_settings->rendering_type) && $form_settings->rendering_type != ''){
+
+		$base_url = $GLOBALS['base_url'];
+		$application_id = variable_get('eddy_core_application_id');
+
+        $form_engine['RenderingStrategy'] = $form_settings->rendering_strategy;
+        $form_engine['RenderingDiv'] = "eddy-form-container";
+        $form_engine['Theme'] = $form_settings->form_skin;
+
+        if(get_current_state() == "beta_"){
+            $form_engine['IsBeta'] = true;
+        }else{
+            $form_engine['IsBeta'] = false;
+        }
+
+        $form_engine['TrackId'] = "jQuery.cookie('_CampaignTrackID')";
+        $form_engine['ApplicationId'] = $application_id;
+
+        $form_engine['MatchResponseGuid'] = "(jQuery.cookie('_matchingResponseGuid')) ?  jQuery.cookie('_matchingResponseGuid') : '00000000-0000-0000-0000-0000-000000000000'";
+
+
+        #region Set FE Institution Properties
+        if($form_settings->rendering_type == 'program-template' || $form_settings->rendering_type == 'program-wizard'){
+
+            $institution_details = new stdClass;
+
+            if(get_eddy_forms_engine_institution_details() != NULL){ //form URL
+
+                $institution_details = get_eddy_forms_engine_institution_details();
+
+            }else if(arg(0) == 'node' && is_numeric(arg(1))){ //school or Campus detail page
+
+                $institution_details = _eddy_forms_engine_get_institution_details_from_nid(arg(1));
+
+            }
+
+            if(isset($institution_details->MatchingResponse)){
+
+                $matching_response = $institution_details->MatchingResponse;
+
+                if(!empty($matching_response->GetInstitutionDetailsResult->InstitutionDetails)){
+
+                    $service_institution_details = $matching_response->GetInstitutionDetailsResult->InstitutionDetails;
+
+                    $form_engine['InstitutionId'] = $service_institution_details->InstitutionId;
+                    $form_engine['InstitutionName'] = check_plain($service_institution_details->InstitutionName);
+
+                }
+
+            }
+
+        }
+        #endregion
+
+        $workflow_qs = array();
+
+        //If the form query string is present then set it to be used by workflow steps
+        if(isset($qs['form']) && $form_id > 0){
+
+            $workflow_qs['form'] = $form_id;
+
+        }
+
+		if($form_settings->rendering_type == 'program-template'){
+
+            $form_engine['ThankYouPage'] = $base_url . url('form/thank-you', array('query' => $workflow_qs));
+
+            $form_engine['AdditionalFields'] = array(
+                'Form Type' => 'Program Template',
+            );
+
+            drupal_add_js(drupal_get_path('module', 'eddy_forms_engine') . "/js/program_template_responsive.js");
+
+			drupal_add_js(variable_get('eddy_forms_engine_service_domain') . "/Static/GetGlobal", array('type' => 'external', 'scope' => 'footer', 'preprocess' => false, 'weight' => 999));
+			drupal_add_js(variable_get('eddy_forms_engine_service_domain') . "/Static/GetClient", array('type' => 'external', 'scope' => 'footer', 'preprocess' => false, 'weight' => 999));
+
+		}else if($form_settings->rendering_type == 'wizard' || $form_settings->rendering_type == 'program-wizard'){
+
+            //if the form is not Self-Contained and Redirect URLS are set.
+            if(!empty($form_settings->workflow_managedchoice_redirect) && !empty($form_settings->workflow_thankyou_redirect) && !empty($form_settings->workflow_nomatch_redirect)){
+
+                $form_engine['SelfContained'] = false;
+
+                if(variable_get('site_frontpage') == current_path()){
+
+                    $form_engine['WorkflowStartPage'] = "$base_url";
+
+                }else if(isset($qs['form_start_page'])){
+
+                    $form_engine['WorkflowStartPage'] = $base_url . url(check_plain($qs['form_start_page']), array('query' => $workflow_qs));
+
+                }else if(!empty($form_settings->workflow_start_redirect)){
+
+                    $form_engine['WorkflowStartPage'] = $base_url . url($form_settings->workflow_start_redirect, array('query' => $workflow_qs));
+
+                }else{
+
+                    $form_engine['WorkflowStartPage'] = $base_url . url(current_path(), array('query' => $workflow_qs));
+
+                }
+
+                //Pass The form even if it is not in query string for all other workflow steps except the start page.
+                $workflow_qs['form'] = $form_id;
+
+                if(isset($qs['form_start_page'])){
+
+                    $workflow_qs['form_start_page'] = check_plain($qs['form_start_page']);
+
+                }else{
+
+                    if(empty($form_settings->workflow_start_redirect)){
+                        $workflow_qs['form_start_page'] = current_path();
+                    }else{
+                        $workflow_qs['form_start_page'] = $form_settings->workflow_start_redirect;
+                    }
+
+                }
+
+                $form_engine['WorkflowManagedChoicePage'] = $base_url . url($form_settings->workflow_managedchoice_redirect, array('query' => $workflow_qs));
+                $form_engine['WorkflowThankYouPage'] = $base_url . url($form_settings->workflow_thankyou_redirect,  array('query' => $workflow_qs));
+                $form_engine['WorkflowNoMatchPage'] = $base_url . url($form_settings->workflow_nomatch_redirect,  array('query' => $workflow_qs));
+
+                //Set the Right ConsumerSideWorkflowStep
+                $current_url = url(current_path());
+
+                if(url($form_settings->workflow_managedchoice_redirect) == $current_url){
+
+                    $form_engine['ConsumerSideWorkflowStep'] = 'MANAGEDCHOICE';
+
+                }else if(url($form_settings->workflow_thankyou_redirect) == $current_url){
+
+                    $form_engine['ConsumerSideWorkflowStep'] = 'THANKYOU';
+
+                }else if(url($form_settings->workflow_nomatch_redirect) == $current_url){
+
+                    $form_engine['ConsumerSideWorkflowStep'] = 'NOMATCH';
+
+                }else{
+
+                    $form_engine['ConsumerSideWorkflowStep'] = 'START';
+
+                }
+
+            }else{
+
+                $form_engine['SelfContained'] = true;
+
+            }
+
+			if($form_settings->rendering_type == 'program-wizard'){
+
+                drupal_add_css('//netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css', 'external');
+                drupal_add_css('//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css', 'external');
+                drupal_add_css(drupal_get_path('module', 'eddy_forms_engine') . "/style/program_wizard.css");
+
+                drupal_add_js(drupal_get_path('module', 'eddy_forms_engine') . "/js/program_wizard.js");
+
+			}
+
+            $form_engine['TemplateId'] = $form_settings->form_template;
+            $form_engine['SessionId'] = "(jQuery.cookie('_Session')) ?  jQuery.cookie('_Session') : '00000000-0000-0000-0000-0000-000000000000'";
+
+            $form_engine['AdditionalFields'] = array(
+                    "Form Type" => "Wizard",
+                );
+
+            //Removed in Favor of the new Bundled Version.
+            //drupal_add_js(variable_get('eddy_forms_engine_service_domain') . "/Static/GetGlobal", array('type' => 'external', 'scope' => 'footer', 'preprocess' => false, 'weight' => 999));
+            //drupal_add_js(variable_get('eddy_forms_engine_service_domain') . "/Static/GetWizardClient", array('type' => 'external', 'scope' => 'footer', 'preprocess' => false, 'weight' => 999));
+
+            drupal_add_js(variable_get('eddy_forms_engine_service_domain') . "/Static/GetBundledWizardJs", array('weight' => 999));
+
+		}
+
+        $form_engine['AdditionalFields']["Source"] = "SEO Site";
+
+        drupal_add_js(drupal_get_path('module', 'eddy_forms_engine') . "/js/cookie.js");
+        drupal_add_js(drupal_get_path('module', 'eddy_forms_engine') . "/js/jquery.validate.js");
+        drupal_add_js(drupal_get_path('module', 'eddy_forms_engine') . "/js/jquery.watermark.min.js");
+
+        //Build FormsEngine Object
+        drupal_alter('eddy_forms_engine_build', $form_engine);
+
+        $rendered_form = "";
+
+        foreach($form_engine as $k => $v){
+
+            if($k == "AdditionalFields" && is_array($v)){
+
+                $rendered_form .= "\nFormsEngine.AdditionalFields = [];\n";
+
+                foreach($v as $ak => $av){
+
+                    $rendered_form .= "FormsEngine.AdditionalFields.push(['$ak', '$av']);\n";
+
+                }
+
+            }
+            else if(preg_match("/jQuery|function/", $v) || preg_match("/templateId/", $v))
+				$rendered_form .= "FormsEngine.$k = $v;\n";
+			else if(preg_match("/true/", $v))
+				$rendered_form .= "FormsEngine.$k = true;\n";
+			else if(preg_match("/false/", $v))
+				$rendered_form .= "FormsEngine.$k = false;\n";
+            else if(is_bool($v)){
+
+                if($v){
+                    $rendered_form .= "FormsEngine.$k = true;\n";
+                }else{
+                    $rendered_form .= "FormsEngine.$k = false;\n";
+                }
+
+            }
+			else if(is_numeric($v))
+				$rendered_form .= "FormsEngine.$k = $v;\n";
+			else
+				$rendered_form .= "FormsEngine.$k = \"$v\";\n";
+
+        }
+
+        if(!empty($form_settings->form_custom_attributes)){
+            $rendered_form .= $form_settings->form_custom_attributes ."\n";
+        }
+
+        drupal_alter('eddy_forms_engine', $rendered_form);
+
+        if($form_settings->rendering_type == 'wizard' || $form_settings->rendering_type == 'program-wizard'){
+            $rendered_form .= '(function ($) { $(document).ready(function () { FormsEngine.LoadForm(); }); })(jQuery);';
+        }
+
+        drupal_add_js($rendered_form, array('type' => 'inline', 'scope' => 'footer', 'weight' => 999));
+
+        $classes = $form_engine['RenderingDiv'];
+
+        if(isset($form_settings->header_arrows_included) && ($form_settings->header_arrows_included)){
+
+            $classes.= ' header_arrows_included';
+
+        }else{
+
+            $classes.= ' header_arrows_not_included';
+
+        }
+
+        if(isset($form_settings->machine_name))
+            $classes.= ' ' . $form_settings->machine_name;
+
+        $element = array(
+		    "element" => array(
+			    "#tag" => "div",
+			    "#attributes" => array (
+				    "name" => $form_engine['RenderingDiv'],
+				    "class" => $classes,
+				    "id" => $form_engine['RenderingDiv'],
+			    ),
+			    "#value" => "",
+		    ),
+	    );
+
+        return theme('html_tag', $element);
+
+	}else{
+
+		drupal_set_message("Form doesn't exist or the \"Form Type\" has not been selected.", "error");
+
+	}
+
+}
+
+
+/**
+ * Returns the Form URL with beginning and ending slash if supported.
+ */
+function get_eddy_form_url($url){
+
+	$url = ltrim($url, '/');
+	$url_var = explode('/',$url);
+
+	if(isset($url_var[0]) && isset($url_var[1]))
+        $url_var[0] = 'form';
+
+	return url(implode("/",$url_var));
+
+}
+
+
+/**
+ * Returns the Form URL without beginning and ending slash if supported.
+ */
+function get_eddy_form_url_raw($url){
+	$url = ltrim($url, '/');
+	$url_var = explode('/',$url);
+
+	if(isset($url_var[0]) && isset($url_var[1]))
+        $url_var[0] = 'form';
+
+	return implode("/",$url_var);
+}
+
+
+/**
+ * Gets IS Form Link.
+ * @param $alias          string Institution Alias.
+ * @param $program_id     int IS Program Id (Optional).
+ * @return Link to the IS Form.
+ */
+function get_eddy_form_url_by_alais_program_id($alais, $program_id = 0){
+
+    $parts = array();
+    $find_alais = explode("/",$alais);
+    if(count($find_alais) > 0){
+	    $parts = array('form', $find_alais[count($find_alais)-1]);
+    }
+
+	if($program_id > 0) array_push($parts, $program_id);
+
+	return url(implode("/", $parts));
+
+}
+
+
+/**
+ * Gets IS Form Link.
+ * @param $institution_id    int IS Institution Id.
+ * @param $program_id        int IS Program Id (Optional).
+ * @return Link to the IS Form.
+ */
+function get_eddy_form_url_by_institution_program_id($institution_id, $program_id = 0){
+
+	$parts = array('form', $institution_id);
+
+	if($program_id > 0) array_push($parts, $program_id);
+
+	return url(implode("/", $parts));
+
+}
+
+
+/**
+ * Gets Institution Details from Nid.
+ * @param $nid    int Node Id.
+ * @param $vid    int Node Revision Id.
+ * @return        stclass School Details with Node.
+ */
+function _eddy_forms_engine_get_institution_details_from_nid($nid, $vid = NULL){
+
+    $institution_id = 0;
+    $school = new stdclass;
+    $node = node_load($nid, $vid);
+
+	// School Info
+	if(isset($node->type) && ((isset($node->status) && $node->status == 1) || (get_current_state() == "beta_"))) {
+
+        // School/Institution Details
+        if(in_array($node->type, array('school', 'institution')) && !empty($node->field_external_id[LANGUAGE_NONE][0]['value'])){
+
+            $institution_id = $node->field_external_id[LANGUAGE_NONE][0]['value'];
+
+            // Campus Details
+        }else if($node->type == 'campus' && !empty($node->field_institution_tr[LANGUAGE_NONE][0]['tid'])){
+
+            $tid = $node->field_institution_tr[LANGUAGE_NONE][0]['tid'];
+
+            $term = taxonomy_term_load($tid);
+
+            if(!empty($term->field_external_id[LANGUAGE_NONE][0]['value'])){
+
+                $institution_id = $term->field_external_id[LANGUAGE_NONE][0]['value'];
+
+            }
+
+        }
+
+        if($institution_id > 0){
+
+            $school = _eddy_forms_engine_get_institution_details_from_service($institution_id);
+
+        }
+
+        $school->node = $node;
+
+    }
+
+    return $school;
+
+}
+
+
+/**
+ * Gets Institution Details from Service.
+ * @param $institution_id       int IS Institution Id.
+ * @return                      stclass Institution Details from Service.
+ */
+function _eddy_forms_engine_get_institution_details_from_service($institution_id){
+
+    $school = new stdClass;
+    $application_id = variable_get('eddy_core_application_id');
+
+    $school->InstitutionId = $institution_id;
+
+    $service_results = eddy_services_get_institution_details($school->InstitutionId);
+    $is_Institution = $service_results->GetInstitutionDetailsResult->InstitutionDetails;
+
+    $school->MatchingResponse = $service_results;
+
+    //call is service to get institution name and description
+    if(isset($is_Institution->InstitutionName)){
+        $school->InstitutionName = check_plain($is_Institution->InstitutionName);
+    }
+    $InstitutionDescription = "";
+    if(isset($is_Institution->InstitutionDescription)){
+        $InstitutionDescription = $is_Institution->InstitutionDescription;
+        $school->Description = $InstitutionDescription;
+    }
+
+    //Set Description for Insternational Sites
+    switch($application_id){
+        case 1 :
+        case 20:
+            $school->Description = ((!empty($is_Institution->InstitutionDescriptionInternational)) ? $is_Institution->InstitutionDescriptionInternational : $InstitutionDescription);
+            break;
+        default:
+            $school->Description = $InstitutionDescription;
+            break;
+
+    }
+
+    $school->Accreditation = '';
+    if(!empty($is_Institution->InstitutionalAccreditationType)){
+        $school->Accreditation = '<p>' . $is_Institution->InstitutionalAccreditationType . '</p>';
+    }
+
+    return $school;
+
+}
+
+
+/**
+ * Return an associative array of the custom List by listing id.
+ */
+function eddy_forms_engine_get_form_fields($form_id = null) {
+	$query = db_select('eddy_forms_engine', 'f')
+	->fields('f');
+    if($form_id && $form_id >=0){
+	    $query->condition('id', $form_id);
+    }
+	return $query->execute()->fetch();
+}
+
+
+/**
+ * Returns the Form URL without beginning and ending slash if supported.
+ */
+function get_eddy_forms_engine_url_raw($url){
+
+    $url = ltrim($url, '/');
+	$url_var = explode('/',$url);
+
+	if(isset($url_var[0]) && isset($url_var[1]))
+		$url_var[0] = 'form';
+
+	return implode("/",$url_var);
+
+}
+
+/**
+ * Implements hook_process_html().
+ */
+function eddy_forms_engine_process_html(&$variables){
+
+	if(is_eddy_forms_engine_section()){
+		$css = $variables['css'];
+
+		foreach($css as $key=>$css_item){
+			if(isset($css_item['group']) && ($css_item['group'] == "100")){
+				unset($css[$key]);
+			}
+		}
+		unset($variables['styles']);
+		$variables['styles'] = drupal_get_css($css);
+	}
+
+}
+
+
+/**
+ * Gets the Form that it is set to be active on the form page.
+ */
+function get_published_form() {
+
+    $form = new stdClass;
+
+    try{
+
+        $form_id = variable_get('eddy_forms_engine_published_form_id');
+
+        $form = db_query('SELECT * FROM {eddy_forms_engine} WHERE id=:form_id', array(':form_id' => $form_id))->fetchObject();
+
+
+    }
+    catch(Exception $e){
+
+        if(module_exists("devel")){
+
+            dpm($e);
+
+        }
+
+    }
+
+    return $form;
+
+}
+
+
+/**
+ * Returns TRUE if you are on an EDDY Form.
+ */
+function is_eddy_forms_engine_section(){
+	if(arg(0) == 'form')
+		return TRUE;
+	else
+		return FALSE;
+}
+
+
+/**
+ * Returns TRUE if you are on an EDDY Form's Thank You Page.
+ */
+function is_eddy_forms_engine_thank_you(){
+	if(arg(0) == 'form' && arg(1) == 'thank-you')
+		return TRUE;
+	else
+		return FALSE;
+}
+
+
+function eddy_forms_engine_load($form_id) {
+    $all_forms = eddy_forms_engine_load_all();
+    return isset($all_forms[$form_id]) ? $all_forms[$form_id] : FALSE;
+}
+
+
+function eddy_forms_engine_load_all() {
+    $custom_forms = &drupal_static(__FUNCTION__);
+    if (!isset($custom_forms)) {
+        $custom_forms = db_query('SELECT * FROM {eddy_forms_engine}')->fetchAllAssoc('id', PDO::FETCH_ASSOC);
+    }
+    return $custom_forms;
+}
+
+
+/**
+ * Implements hook_form().
+ */
+function eddy_forms_engine_contents_settings_form($form, &$form_state) {
+
+	$form['contact_information'] = array(
+	  '#markup' => variable_get('eddy_form_information', t('An area where you can manage the Program Template content for the Drupal site.')),
+	);
+	$form['form_content'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Form Page content'),
+		'#weight' => 0,
+		'#collapsible' => TRUE,
+		'#collapsed' => TRUE,
+	);
+
+	$form['thank_you_content'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Thank You Page content'),
+		'#weight' => 1,
+		'#collapsible' => TRUE,
+		'#collapsed' => TRUE,
+	);
+
+	$form['form_content']['eddy_forms_engine_further_info'] = array(
+		'#type' => 'textarea',
+		'#title' => t('Program Template Further Info Body'),
+		'#default_value' => variable_get('eddy_forms_engine_further_info'),
+		'#rows' => 6,
+		'#description' => t('[school-name] will be replaced to the current school name on the form page.'),
+		'#weight' => -7,
+	);
+	$form['form_content']['eddy_forms_engine_global_facts'] = array(
+		'#type' => 'textarea',
+		'#title' => t('Program Template Global Facts Body'),
+		'#default_value' => variable_get('eddy_forms_engine_global_facts'),
+		'#rows' => 6,
+		'#description' => t('This global fact is going to display on each Program Template page if there is no Student Quotes.'),
+		'#weight' => -8,
+	);
+	$form['form_content']['program_template_msg'] = array(
+        '#type' => 'textarea',
+        '#title' => t('Program Template Message'),
+        '#default_value' => variable_get('program_template_msg'),
+        '#rows' => 6,
+        '#description' => t('This message will be displayed on top of each Program Template page.'),
+        '#weight' => -9,
+    );
+
+	$form['thank_you_content']['thank_you_title'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Thank You Page title'),
+		'#default_value' => variable_get('thank_you_title'),
+		'#description' => t('The title that will appear in the &#60;title&#62; tag in the &#60;head&#62; of the page.'),
+		'#weight' => -6,
+	);
+
+	if(variable_get('thank_you_content_3') != NULL){
+		$content_3 = variable_get('thank_you_content_3');
+		$content_3_value = $content_3['value'];
+		$content_3_format = $content_3['format'];
+	}else{
+		$content_3_value = '';
+		$content_3_format = 'full_html';
+	}
+
+	$form['thank_you_content']['thank_you_content_3'] = array(
+		'#type' => 'text_format',
+		'#title' => t('Student guide'),
+		'#default_value' => $content_3_value,
+		'#format' => $content_3_format,
+		'#rows' => 6,
+		'#weight' => -1,
+	);
+
+	if(variable_get('thank_you_content_2') != NULL){
+		$content_2 = variable_get('thank_you_content_2');
+		$content_2_value = $content_2['value'];
+		$content_2_format = $content_2['format'];
+	}else{
+		$content_2_value = '';
+		$content_2_format = 'full_html';
+	}
+
+	$form['thank_you_content']['thank_you_content_2'] = array(
+		'#type' => 'text_format',
+		'#title' => t('Tuition tips body'),
+		'#default_value' => $content_2_value,
+		'#format' => $content_2_format,
+		'#rows' => 6,
+		'#weight' => -2,
+	);
+
+	if(variable_get('thank_you_content_1') != NULL){
+		$content_1 = variable_get('thank_you_content_1');
+		$content_1_value = $content_1['value'];
+		$content_1_format = $content_1['format'];
+	}else{
+		$content_1_value = '';
+		$content_1_format = 'full_html';
+	}
+
+	$form['thank_you_content']['thank_you_content_1'] = array(
+		'#type' => 'text_format',
+		'#title' => t('Set yourself up for success body'),
+		'#default_value' => $content_1_value,
+		'#format' => $content_1_format,
+		'#rows' => 6,
+		'#weight' => -3,
+	);
+	$form['thank_you_content']['thank_you_failed_lead_msg'] = array(
+		'#type' => 'textarea',
+		'#title' => t('Thank you page failed lead message body'),
+		'#default_value' => variable_get('thank_you_failed_lead_msg'),
+		'#rows' => 6,
+		'#weight' => -4,
+	);
+	$form['thank_you_content']['thank_you_success_lead_msg'] = array(
+		'#type' => 'textarea',
+		'#title' => t('Thank you page successful lead message body'),
+		'#default_value' => variable_get('thank_you_success_lead_msg'),
+		'#rows' => 6,
+		'#weight' => -5,
+	);
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Submit'),
+		'#weight' => 12,
+	);
+
+	return $form;
+
+}
+
+
+/**
+ * Implements hook_form_submit().
+ */
+function eddy_forms_engine_contents_settings_form_submit($form, &$form_state){
+
+	variable_set('eddy_forms_engine_global_facts', $form_state['values']['eddy_forms_engine_global_facts']);
+	variable_set('eddy_forms_engine_further_info', $form_state['values']['eddy_forms_engine_further_info']);
+    variable_set('program_template_msg', $form_state['values']['program_template_msg']);
+	variable_set('thank_you_success_lead_msg', $form_state['values']['thank_you_success_lead_msg']);
+	variable_set('thank_you_failed_lead_msg', $form_state['values']['thank_you_failed_lead_msg']);
+	variable_set('thank_you_content_1', $form_state['values']['thank_you_content_1']);
+	variable_set('thank_you_content_2', $form_state['values']['thank_you_content_2']);
+	variable_set('thank_you_content_3', $form_state['values']['thank_you_content_3']);
+	variable_set('thank_you_title', $form_state['values']['thank_you_title']);
+
+	cache_clear_all('eddy_forms_engine_thank_you_html', 'cache', TRUE);
+
+	drupal_set_message(t('The EDDY Form content settings have been saved.'));
+
+}

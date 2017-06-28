@@ -1,0 +1,69 @@
+<?php
+
+/**
+ * Implements hook_cron().
+ */
+function eddy_school_sync_cron(){
+
+	$serviceInstitutions = eddy_services_get_listings(array('use_beta' => true), 'GetInstitutions');
+
+	if(!empty($serviceInstitutions->GetInstitutionsResult->InstitutionList)){
+
+		foreach($serviceInstitutions->GetInstitutionsResult->InstitutionList as $institution)
+			$serviceInstitutionIds[] = $institution->InstitutionId;
+
+		//$drupalInstitutions = db_query('SELECT field_external_id_value FROM {field_data_field_external_id}')->fetchAll();
+		$drupalInstitutions = db_query("SELECT DISTINCT field_external_id_value FROM {field_revision_field_external_id} WHERE entity_type = 'node' and bundle = 'school'")->fetchAll();
+
+		foreach($drupalInstitutions as $drupalInstitution)
+			$drupalInstitutionsIds[] = $drupalInstitution->field_external_id_value;
+
+		$diff = array_diff($serviceInstitutionIds, $drupalInstitutionsIds);
+
+		$syncedSchools = array();
+
+		foreach($diff as $key => $value){
+
+			$school = $serviceInstitutions->GetInstitutionsResult->InstitutionList[$key];
+
+			if(!empty($school->InstitutionName)){
+
+				$node = new stdClass();
+				$node->title = $school->InstitutionName;
+				$node->type = "school";
+				node_object_prepare($node); // Sets some defaults. Invokes hook_prepare() and hook_node_prepare().
+				$node->language = LANGUAGE_NONE; // Or e.g. 'en' if locale is enabled
+				$node->uid = 1;
+				$node->status = 0;
+				$node->promote = 0;
+				$node->comment = 0;
+				$node->body[$node->language][0]['value'] = $school->InstitutionDescription;
+				$node->body[$node->language][0]['format'] = 'full_html';
+				$node->field_school_desc_other[$node->language][0]['value'] = $school->InstitutionDescription;
+				$node->field_school_desc_other[$node->language][0]['format'] = 'full_html';
+				$node->field_partner_code[$node->language][0]['value'] = 'none';
+				$node->field_external_id[$node->language][0]['value'] = $school->InstitutionId;
+				$node = node_submit($node);
+				node_save($node);
+
+				$syncedSchools[] = array('data' => l($school->InstitutionName . ': ' . $school->InstitutionId, 'node/' . $node->nid));
+
+			}
+			else{
+
+				watchdog('Syncs', 'Institution ' . $school->InstitutionId . ' Did not get Synced because it was missing a Name.', null, WATCHDOG_ERROR);
+
+			}
+		}
+
+		if(!empty($diff)){
+			watchdog('Syncs', theme_item_list(array('attributes' => array(), 'type' => 'ol', 'items' => $syncedSchools, 'title' => "The following institutions have been inserted from IS:")), null, WATCHDOG_INFO);
+		}
+
+	}else{
+
+		watchdog('Syncs', 'A Sync was attempted but the Service returned no results.', null, WATCHDOG_ERROR);
+
+	}
+
+}

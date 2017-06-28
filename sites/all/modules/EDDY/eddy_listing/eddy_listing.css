@@ -1,0 +1,105 @@
+.inline{
+      display:inline-block;
+      margin: 0 30px 0 0;
+}
+
+.page-admin-structure-eddy-listing .form-type-radio  {
+      display:inline;	
+}
+
+#content {
+
+}
+
+.block-eddy-listing {
+    visibility:hidden;
+}
+
+/*Default all Listings*/
+#content .eddy-listings {
+	margin:0;
+	padding:10px 0 0 0;
+}
+
+#content .eddy-listings  li{
+	margin:0 0 10px 0;
+	padding:0 0 10px 0;
+	clear:both;
+}
+
+	#content .main-listings .eddy-listings h3{
+		font-size:.9em;
+	}
+
+
+	#content .main-listings .eddy-listings h4{
+		font-size:.8em;
+		font-weight:bold;
+	}
+
+#content .eddy-listings .logo-holder {
+	margin-right:10px;
+	float:left;
+	display:table; /* Fire fox and Chrome*/	
+	/**margin-bottom:1000px;*/ /* IE needs this to align the divs*/
+}
+
+#content .eddy-listings .logo-holder a{
+	text-decoration:none!important;
+}
+
+#content .eddy-listings .content-item-holder {
+	display:table; /* Fire fox and Chrome*/
+	padding:0 0 0 0;
+	*float:left;
+}
+
+	#content .eddy-listings .button-holder {
+		clear:both;
+		float:left;
+	}
+	
+		#content .eddy-listings .button-holder a {
+			display:block;
+			float:left;
+			margin-right:8px;
+		}
+
+/* Default Pager Styles */	
+#content .main-listings .item-list .pager {
+  padding:0;
+	margin:10px 0 0 0;
+}
+
+#content .main-listings .item-list .pager li{
+	margin:0 0 0 0;
+	padding:0 2px;
+}
+
+/*Hides SEO text*/
+.eddy-program-listings .button-holder a span {
+	text-indent:-9999px;
+	position:absolute;
+}
+
+
+/* user view records */
+#content .user-view-records{
+	display:inline;
+	margin:0;
+}
+#content .user-view-records ul{
+	margin:0;
+	padding:0;
+	display:inline;
+}
+#content .user-view-records li{
+	display:inline;
+	padding:2px 4px;
+	margin: 0;
+	color: #2965A5;
+}
+#content .user-view-records li.current{
+	border:1px solid #AFAFAF;
+	font-weight:bold;
+}

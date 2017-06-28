@@ -1,0 +1,330 @@
+<?php
+$view = new view();
+$view->name = 'reviews';
+$view->description = 'Displays a list of reviews on admin pages.';
+$view->tag = 'default';
+$view->base_table = 'eddy_reviews';
+$view->human_name = 'Reviews';
+$view->core = 7;
+$view->api_version = '3.0';
+$view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */
+
+/* Display: Master */
+$handler = $view->new_display('default', 'Master', 'default');
+$handler->display->display_options['title'] = 'Reviews Management';
+$handler->display->display_options['use_more_always'] = FALSE;
+$handler->display->display_options['access']['type'] = 'perm';
+$handler->display->display_options['access']['perm'] = 'browse reviews';
+$handler->display->display_options['cache']['type'] = 'none';
+$handler->display->display_options['query']['type'] = 'views_query';
+$handler->display->display_options['exposed_form']['type'] = 'basic';
+$handler->display->display_options['pager']['type'] = 'full';
+$handler->display->display_options['pager']['options']['items_per_page'] = '25';
+$handler->display->display_options['style_plugin'] = 'table';
+$handler->display->display_options['style_options']['columns'] = array(
+  'title' => 'title',
+  'rating' => 'rating',
+  'associate_name' => 'associate_name',
+  'bid' => 'bid',
+  'customer_email' => 'customer_email',
+  'customer_name' => 'customer_name',
+  'created' => 'created',
+  'updated' => 'updated',
+  'status' => 'status',
+  'rid' => 'rid',
+);
+$handler->display->display_options['style_options']['default'] = 'updated';
+$handler->display->display_options['style_options']['info'] = array(
+  'title' => array(
+    'sortable' => 1,
+    'default_sort_order' => 'asc',
+    'align' => '',
+    'separator' => '',
+    'empty_column' => 0,
+  ),
+  'rating' => array(
+    'sortable' => 1,
+    'default_sort_order' => 'asc',
+    'align' => '',
+    'separator' => '',
+    'empty_column' => 0,
+  ),
+  'associate_name' => array(
+    'sortable' => 1,
+    'default_sort_order' => 'asc',
+    'align' => '',
+    'separator' => '',
+    'empty_column' => 0,
+  ),
+  'bid' => array(
+    'align' => '',
+    'separator' => '',
+    'empty_column' => 0,
+  ),
+  'customer_email' => array(
+    'sortable' => 0,
+    'default_sort_order' => 'asc',
+    'align' => '',
+    'separator' => '',
+    'empty_column' => 0,
+  ),
+  'customer_name' => array(
+    'sortable' => 1,
+    'default_sort_order' => 'asc',
+    'align' => '',
+    'separator' => '',
+    'empty_column' => 0,
+  ),
+  'created' => array(
+    'sortable' => 1,
+    'default_sort_order' => 'asc',
+    'align' => '',
+    'separator' => '',
+    'empty_column' => 0,
+  ),
+  'updated' => array(
+    'sortable' => 1,
+    'default_sort_order' => 'desc',
+    'align' => '',
+    'separator' => '',
+    'empty_column' => 0,
+  ),
+  'status' => array(
+    'sortable' => 1,
+    'default_sort_order' => 'asc',
+    'align' => '',
+    'separator' => '',
+    'empty_column' => 0,
+  ),
+  'rid' => array(
+    'sortable' => 0,
+    'default_sort_order' => 'asc',
+    'align' => '',
+    'separator' => '',
+    'empty_column' => 0,
+  ),
+);
+$handler->display->display_options['style_options']['sticky'] = TRUE;
+$handler->display->display_options['style_options']['empty_table'] = TRUE;
+/* Relationship: Reviews: Program/Institution ID */
+$handler->display->display_options['relationships']['bid']['id'] = 'bid';
+$handler->display->display_options['relationships']['bid']['table'] = 'eddy_reviews';
+$handler->display->display_options['relationships']['bid']['field'] = 'bid';
+/* Relationship: Reviews: Review Updated by User ID */
+$handler->display->display_options['relationships']['updated_uid']['id'] = 'updated_uid';
+$handler->display->display_options['relationships']['updated_uid']['table'] = 'eddy_reviews';
+$handler->display->display_options['relationships']['updated_uid']['field'] = 'updated_uid';
+/* Field: Reviews: Title */
+$handler->display->display_options['fields']['title']['id'] = 'title';
+$handler->display->display_options['fields']['title']['table'] = 'eddy_reviews';
+$handler->display->display_options['fields']['title']['field'] = 'title';
+$handler->display->display_options['fields']['title']['label'] = 'Review';
+/* Field: Reviews: Rating */
+$handler->display->display_options['fields']['rating']['id'] = 'rating';
+$handler->display->display_options['fields']['rating']['table'] = 'eddy_reviews';
+$handler->display->display_options['fields']['rating']['field'] = 'rating';
+/* Field: Associate Info in Reviews: Associate_name */
+$handler->display->display_options['fields']['associate_name']['id'] = 'associate_name';
+$handler->display->display_options['fields']['associate_name']['table'] = 'eddy_reviews_associate_base';
+$handler->display->display_options['fields']['associate_name']['field'] = 'associate_name';
+$handler->display->display_options['fields']['associate_name']['relationship'] = 'bid';
+$handler->display->display_options['fields']['associate_name']['exclude'] = TRUE;
+/* Field: Reviews: Program/Institution ID */
+$handler->display->display_options['fields']['bid']['id'] = 'bid';
+$handler->display->display_options['fields']['bid']['table'] = 'eddy_reviews';
+$handler->display->display_options['fields']['bid']['field'] = 'bid';
+$handler->display->display_options['fields']['bid']['label'] = 'Program';
+$handler->display->display_options['fields']['bid']['alter']['alter_text'] = TRUE;
+$handler->display->display_options['fields']['bid']['alter']['text'] = '[associate_name]';
+/* Field: Reviews: Customer_email */
+$handler->display->display_options['fields']['customer_email']['id'] = 'customer_email';
+$handler->display->display_options['fields']['customer_email']['table'] = 'eddy_reviews';
+$handler->display->display_options['fields']['customer_email']['field'] = 'customer_email';
+$handler->display->display_options['fields']['customer_email']['exclude'] = TRUE;
+/* Field: Reviews: Customer_name */
+$handler->display->display_options['fields']['customer_name']['id'] = 'customer_name';
+$handler->display->display_options['fields']['customer_name']['table'] = 'eddy_reviews';
+$handler->display->display_options['fields']['customer_name']['field'] = 'customer_name';
+$handler->display->display_options['fields']['customer_name']['label'] = 'Submitted By';
+$handler->display->display_options['fields']['customer_name']['alter']['alter_text'] = TRUE;
+$handler->display->display_options['fields']['customer_name']['alter']['text'] = '[customer_name] <br />
+<[customer_email]>';
+/* Field: Reviews: Created */
+$handler->display->display_options['fields']['created']['id'] = 'created';
+$handler->display->display_options['fields']['created']['table'] = 'eddy_reviews';
+$handler->display->display_options['fields']['created']['field'] = 'created';
+$handler->display->display_options['fields']['created']['alter']['text'] = 'format_date([created], \'medium\')';
+$handler->display->display_options['fields']['created']['separator'] = '';
+/* Field: Reviews: Updated */
+$handler->display->display_options['fields']['updated']['id'] = 'updated';
+$handler->display->display_options['fields']['updated']['table'] = 'eddy_reviews';
+$handler->display->display_options['fields']['updated']['field'] = 'updated';
+$handler->display->display_options['fields']['updated']['separator'] = '';
+/* Field: User: Name */
+$handler->display->display_options['fields']['name']['id'] = 'name';
+$handler->display->display_options['fields']['name']['table'] = 'users';
+$handler->display->display_options['fields']['name']['field'] = 'name';
+$handler->display->display_options['fields']['name']['relationship'] = 'updated_uid';
+$handler->display->display_options['fields']['name']['label'] = 'Updated By';
+/* Field: Reviews: Status */
+$handler->display->display_options['fields']['status']['id'] = 'status';
+$handler->display->display_options['fields']['status']['table'] = 'eddy_reviews';
+$handler->display->display_options['fields']['status']['field'] = 'status';
+/* Field: Reviews: Reviews ID */
+$handler->display->display_options['fields']['rid']['id'] = 'rid';
+$handler->display->display_options['fields']['rid']['table'] = 'eddy_reviews';
+$handler->display->display_options['fields']['rid']['field'] = 'rid';
+$handler->display->display_options['fields']['rid']['label'] = 'Operation';
+/* Sort criterion: Reviews: Updated */
+$handler->display->display_options['sorts']['updated']['id'] = 'updated';
+$handler->display->display_options['sorts']['updated']['table'] = 'eddy_reviews';
+$handler->display->display_options['sorts']['updated']['field'] = 'updated';
+$handler->display->display_options['sorts']['updated']['order'] = 'DESC';
+/* Filter criterion: Reviews: Status */
+$handler->display->display_options['filters']['status']['id'] = 'status';
+$handler->display->display_options['filters']['status']['table'] = 'eddy_reviews';
+$handler->display->display_options['filters']['status']['field'] = 'status';
+$handler->display->display_options['filters']['status']['group'] = 1;
+$handler->display->display_options['filters']['status']['exposed'] = TRUE;
+$handler->display->display_options['filters']['status']['expose']['operator_id'] = 'status_op';
+$handler->display->display_options['filters']['status']['expose']['label'] = 'Status';
+$handler->display->display_options['filters']['status']['expose']['operator'] = 'status_op';
+$handler->display->display_options['filters']['status']['expose']['identifier'] = 'status';
+$handler->display->display_options['filters']['status']['is_grouped'] = TRUE;
+$handler->display->display_options['filters']['status']['group_info']['label'] = 'Status';
+$handler->display->display_options['filters']['status']['group_info']['identifier'] = 'status';
+$handler->display->display_options['filters']['status']['group_info']['group_items'] = array(
+  1 => array(
+    'title' => 'Published',
+    'operator' => '=',
+    'value' => array(
+      'value' => '2',
+      'min' => '',
+      'max' => '',
+    ),
+  ),
+  2 => array(
+    'title' => 'Approved',
+    'operator' => '=',
+    'value' => array(
+      'value' => '1',
+      'min' => '',
+      'max' => '',
+    ),
+  ),
+  3 => array(
+    'title' => 'Pending',
+    'operator' => '=',
+    'value' => array(
+      'value' => '0',
+      'min' => '',
+      'max' => '',
+    ),
+  ),
+);
+/* Filter criterion: Reviews: Rating */
+$handler->display->display_options['filters']['rating']['id'] = 'rating';
+$handler->display->display_options['filters']['rating']['table'] = 'eddy_reviews';
+$handler->display->display_options['filters']['rating']['field'] = 'rating';
+$handler->display->display_options['filters']['rating']['group'] = 1;
+$handler->display->display_options['filters']['rating']['exposed'] = TRUE;
+$handler->display->display_options['filters']['rating']['expose']['operator_id'] = 'rating_op';
+$handler->display->display_options['filters']['rating']['expose']['label'] = 'Rating';
+$handler->display->display_options['filters']['rating']['expose']['operator'] = 'rating_op';
+$handler->display->display_options['filters']['rating']['expose']['identifier'] = 'rating';
+$handler->display->display_options['filters']['rating']['is_grouped'] = TRUE;
+$handler->display->display_options['filters']['rating']['group_info']['label'] = 'Rating';
+$handler->display->display_options['filters']['rating']['group_info']['identifier'] = 'rating';
+$handler->display->display_options['filters']['rating']['group_info']['group_items'] = array(
+  1 => array(
+    'title' => '5',
+    'operator' => '=',
+    'value' => '5',
+  ),
+  2 => array(
+    'title' => '4',
+    'operator' => '=',
+    'value' => '4',
+  ),
+  3 => array(
+    'title' => '3',
+    'operator' => '=',
+    'value' => '3',
+  ),
+  4 => array(
+    'title' => '2',
+    'operator' => '=',
+    'value' => '2',
+  ),
+  5 => array(
+    'title' => '1',
+    'operator' => '=',
+    'value' => '1',
+  ),
+);
+/* Filter criterion: Associate Info in Reviews: Associate_name */
+$handler->display->display_options['filters']['associate_name']['id'] = 'associate_name';
+$handler->display->display_options['filters']['associate_name']['table'] = 'eddy_reviews_associate_base';
+$handler->display->display_options['filters']['associate_name']['field'] = 'associate_name';
+$handler->display->display_options['filters']['associate_name']['relationship'] = 'bid';
+$handler->display->display_options['filters']['associate_name']['operator'] = 'contains';
+$handler->display->display_options['filters']['associate_name']['group'] = 1;
+$handler->display->display_options['filters']['associate_name']['exposed'] = TRUE;
+$handler->display->display_options['filters']['associate_name']['expose']['operator_id'] = 'associate_name_op';
+$handler->display->display_options['filters']['associate_name']['expose']['label'] = 'Program Name';
+$handler->display->display_options['filters']['associate_name']['expose']['operator'] = 'associate_name_op';
+$handler->display->display_options['filters']['associate_name']['expose']['identifier'] = 'associate_name';
+$handler->display->display_options['filters']['associate_name']['expose']['remember_roles'] = array(
+  2 => '2',
+  1 => 0,
+  3 => 0,
+);
+/* Filter criterion: Reviews: Customer_email */
+$handler->display->display_options['filters']['customer_email']['id'] = 'customer_email';
+$handler->display->display_options['filters']['customer_email']['table'] = 'eddy_reviews';
+$handler->display->display_options['filters']['customer_email']['field'] = 'customer_email';
+$handler->display->display_options['filters']['customer_email']['operator'] = 'contains';
+$handler->display->display_options['filters']['customer_email']['group'] = 1;
+$handler->display->display_options['filters']['customer_email']['exposed'] = TRUE;
+$handler->display->display_options['filters']['customer_email']['expose']['operator_id'] = 'customer_email_op';
+$handler->display->display_options['filters']['customer_email']['expose']['label'] = 'Submitted By (Email)';
+$handler->display->display_options['filters']['customer_email']['expose']['operator'] = 'customer_email_op';
+$handler->display->display_options['filters']['customer_email']['expose']['identifier'] = 'customer_email';
+$handler->display->display_options['filters']['customer_email']['expose']['remember_roles'] = array(
+  2 => '2',
+  1 => 0,
+  3 => 0,
+);
+/* Filter criterion: Reviews: Title */
+$handler->display->display_options['filters']['title']['id'] = 'title';
+$handler->display->display_options['filters']['title']['table'] = 'eddy_reviews';
+$handler->display->display_options['filters']['title']['field'] = 'title';
+$handler->display->display_options['filters']['title']['operator'] = 'contains';
+$handler->display->display_options['filters']['title']['group'] = 1;
+$handler->display->display_options['filters']['title']['exposed'] = TRUE;
+$handler->display->display_options['filters']['title']['expose']['operator_id'] = 'title_op';
+$handler->display->display_options['filters']['title']['expose']['label'] = 'Review';
+$handler->display->display_options['filters']['title']['expose']['operator'] = 'title_op';
+$handler->display->display_options['filters']['title']['expose']['identifier'] = 'title';
+$handler->display->display_options['filters']['title']['expose']['remember_roles'] = array(
+  2 => '2',
+  1 => 0,
+  3 => 0,
+);
+/* Filter criterion: Reviews: Status */
+$handler->display->display_options['filters']['status_1']['id'] = 'status_1';
+$handler->display->display_options['filters']['status_1']['table'] = 'eddy_reviews';
+$handler->display->display_options['filters']['status_1']['field'] = 'status';
+$handler->display->display_options['filters']['status_1']['operator'] = '!=';
+$handler->display->display_options['filters']['status_1']['value']['value'] = '3';
+$handler->display->display_options['filters']['status_1']['group'] = 1;
+
+/* Display: Page */
+$handler = $view->new_display('page', 'Page', 'page');
+$handler->display->display_options['path'] = 'admin/reviews';
+$handler->display->display_options['menu']['title'] = 'Reviews Management';
+$handler->display->display_options['menu']['weight'] = '0';
+$handler->display->display_options['menu']['context'] = 0;
+$handler->display->display_options['menu']['context_only_inline'] = 0;
+
+

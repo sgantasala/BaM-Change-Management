@@ -1,0 +1,8 @@
+name = SAB GTM Datalayer
+description = SAB tags which push certain Google Tag Manager Datalayer properties.
+core = 7.x
+package = Eddy Core Business
+version = "7.x-2.0"
+
+dependencies[] = google_tag
+dependencies[] = eddy_gtm_datalayer

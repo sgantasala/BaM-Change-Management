@@ -1,0 +1,5 @@
+name = Eddy Forms Engine Tag
+description = Allows you to place the Forms Engine Tag on the page without rendering a block.
+core = 7.x
+package = Eddy Core Business
+Version = "7.x-1.0"

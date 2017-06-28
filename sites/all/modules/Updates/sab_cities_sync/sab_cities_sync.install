@@ -1,0 +1,39 @@
+<?php
+
+ /** 
+ * Implements hook_update_7001()
+ *
+ * Create Cities Taxonomy.
+ */
+function sab_cities_sync_update_7001(&$sandbox) {
+    
+    if (!isset($sandbox['progress'])) {
+        
+        $total_cities = sab_sync_get_cities_count();
+        
+        $sandbox['progress'] = 0;
+        $sandbox['max'] = $total_cities;
+        $sandbox['messages'] = array();
+        $sandbox['current_node'] = 0;
+        
+    }
+    
+    $diffs = sab_import_get_cities(100, $sandbox['current_node']); 
+ 
+    foreach ($diffs as $row) {
+        
+        $sandbox['progress']++;
+        $sandbox['current_node'] = $row->CityId; 
+       
+        _sab_sync_insert_cities($row);
+        
+    }
+
+    $sandbox['#finished'] = ($sandbox['progress'] >= $sandbox['max']) ? TRUE : ($sandbox['progress'] / $sandbox['max']);
+	
+    
+    if ($sandbox['#finished']) {
+        return t('Cities have been Added.');
+    } 
+
+}

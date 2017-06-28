@@ -1,0 +1,1642 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function sab_product_list_menu() {
+
+  $items['product_list/%'] = array(
+      //'title callback' => 'sab_product_list_title',
+      //'title arguments' => array(1),
+      'page callback' => 'sab_product_list_view',
+      'page arguments' => array(1),
+      'access callback' => TRUE,
+  );
+
+  //2 MENU_LOCAL_TASK(including 1 MENU_DEFAULT_LOCAL_TASK) is required to display local_task on page
+  $items['product_list/%/view'] = array(
+    'title' => 'View',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+  $items['product_list/%/product-list'] = array(
+      'title' => 'Create Node',
+      'access callback' => 'create_product_list_node',
+      //'access arguments' => array('create product_list content'),
+      'page callback' => 'create_node_redirect',
+      'page arguments' => array('node/add/product-list', 0, 1),
+      'type' => MENU_LOCAL_TASK,
+      //'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+  );
+
+  $items['product_list/%/city'] = array(
+      'title' => 'Create City Node',
+      'access callback' => 'create_city_node',
+      'page callback' => 'create_node_redirect',
+      'page arguments' => array('node/add/city', 0, 1),
+      'type' => MENU_LOCAL_TASK,
+      //'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+      'weight' => 100,
+  );
+
+  $items['node/%/city'] = array(
+      'title' => 'Create City Node',
+      'access callback' => 'create_city_node',
+      'page callback' => 'create_node_redirect',
+      'page arguments' => array('node/add/city', 0, 1),
+      'type' => MENU_LOCAL_TASK,
+      //'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+      'weight' => 100,
+  );
+
+
+  return $items;
+
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function sab_product_list_block_info() {
+
+    $blocks['sab_product_list_top_title'] = array(
+      'info' => t('SAB Product List: Listing page top title'),
+      'status' => 1,
+      'cache' => DRUPAL_NO_CACHE,
+      'visibility' => 1,
+      'region' => 'content',
+      'theme' => 'sab_bootstrap',
+      'weight' => '-1',
+    );
+    $blocks['sab_product_list_bottom_title'] = array(
+      'info' => t('SAB Product List: Listing page bottom title'),
+      'status' => 1,
+      'cache' => DRUPAL_NO_CACHE,
+      'visibility' => 1,
+      'region' => 'content',
+      'theme' => 'sab_bootstrap',
+      'weight' => '2',
+    );
+
+    return $blocks;
+}
+
+
+/**
+ * Implements hook_redirect().
+ */
+function sab_product_list_redirect_alter($redirect){
+
+    if(isset($redirect->redirect)){
+
+        $fragmenets = explode('/', $redirect->redirect);
+
+        if(isset($fragmenets[0]) && $fragmenets[0] == 'product_list' && isset($fragmenets[1]) && is_numeric($fragmenets[1])){
+
+            $nid = db_select('eddy_product_list', 'p')
+                    ->fields('p', array('nid'))
+                    ->condition('plid', $fragmenets[1])
+                    ->condition('has_node', 1)
+                    ->execute()
+                    ->fetchfield();
+
+            if(!empty($nid)){
+                $redirect->redirect = url("node/$nid");
+            }
+
+        }
+
+    }
+
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function sab_product_list_block_view($delta = '') {
+
+     $block = array();
+
+    switch($delta){
+
+        case 'sab_product_list_top_title':
+            $block['subject'] = "";
+            $block['content'] = array('#markup' => _sab_product_list_get_current_listing_title());
+            break;
+        case 'sab_product_list_bottom_title':
+            $block['subject'] = "";
+            $block['content'] = array('#markup' => _sab_product_list_get_current_listing_title());
+            break;
+    }
+
+    return $block;
+}
+
+/**
+ * Get Listings Title
+ */
+function _sab_product_list_get_current_listing_title() {
+
+    try{
+        $current_title = _get_current_listing_title();
+
+        $markup = '';
+
+        if (!empty($current_title)){
+
+            $markup .= '<h2 class="featured-programs">' . $current_title .'</h2>';
+
+        }
+    }
+    catch(Exception $e){
+
+        dpm($e);
+        return drupal_not_found();
+
+    }
+
+    return $markup;
+
+}
+
+function _get_current_listing_title() {
+
+    $h2_title = "";
+    $show_title = false;
+    if(arg(0) == 'node' && is_numeric(arg(1))){
+
+        $node = node_load(arg(1));
+
+        if(node_is_page($node)){
+
+            $show_title= true;
+
+        }
+    }
+    if($show_title == true || arg(2) == '') {
+        $current_pl_options = get_sab_product_list_current_product_list();
+
+        if(isset($current_pl_options->titles)) {
+
+            $h2_title = "Sponsored Listings";
+
+            $city = (isset($current_pl_options->titles['city']) ) ? $current_pl_options->titles['city'] : "";
+            $level = (isset($current_pl_options->titles['level']) ) ? $current_pl_options->titles['level'] : "";
+            $country = (isset($current_pl_options->titles['country']) ) ? $current_pl_options->titles['country'] : "";
+            $type = (isset($current_pl_options->titles['type']) ) ? $current_pl_options->titles['type'] : "";
+            $term = (isset($current_pl_options->titles['term']) ) ? $current_pl_options->titles['term'] : "";
+            $specialty = (isset($current_pl_options->titles['specialty']) ) ? $current_pl_options->titles['specialty'] : "";
+
+            if(!empty($level) && !empty($type) ){
+                $h2_title = "Sponsored " . $type . " in " . $level . " Program Listings";
+            }
+            if(!empty($country) && !empty($type) ){
+                $h2_title = "Sponsored " . str_ireplace("abroad", "", $type) . " in " . $country. " Program Listings";
+            }
+            if(!empty($country) && !empty($type) && !empty($city) ){
+                $h2_title = "Sponsored " . str_ireplace("abroad", "", $type) . " in " . $city . ", " . $country. " Program Listings";
+            }
+            if(!empty($term) && !empty($type) ){
+                $h2_title = "Sponsored " . $term . " Abroad Program Listings";
+            }
+            if(!empty($specialty) && !empty($type) && $type == "Study Abroad"){
+                $h2_title = "Sponsored Study " . $specialty . " Abroad Program Listings";
+            }
+
+            if(!empty($country) && !empty($term) ){
+                $h2_title = "Sponsored " . $term . " in " . $country. " Program Listings";
+            }
+            if (!empty($country) && !empty($specialty) ){
+                $h2_title = "Sponsored Study " . $specialty . " in " . $country. " Program Listings";
+            }
+            if (!empty($country) && !empty($city)  && !empty($term) ){
+                $h2_title = "Sponsored " . $term . " Programs in " . $city . ", " . $country. " Program Listings";
+            }
+            if (!empty($country) && !empty($city) && !empty($specialty) && !empty($type)){
+                $h2_title = "Sponsored " . $specialty . " " . $type . " Programs in " . $city . ", " . $country. " Program Listings";
+            }
+
+            if (!empty($term) && !empty($specialty) && !empty($type) ){
+                $h2_title = "Sponsored " . $term . " " . $type . ", " . $specialty . " Program Listings";
+            }
+            if (!empty($country) && !empty($city)  && !empty($term) && !empty($level) && !empty($type)){
+                $h2_title = "Sponsored " . $level . " " . $city . ", " . $country. " " . $term . " " . $type . " Program Listings";
+            }
+        }
+    }
+
+    return $h2_title;
+
+}
+
+function sab_product_list_admin_paths() {
+    $paths = array(
+      'product_list/*/product-list' => TRUE,
+      'product_list/*/city' => TRUE,
+      'node/*/city' => TRUE,
+    );
+    return $paths;
+}
+
+/**
+ * Implements hook_url_outbound_alter().
+ */
+function sab_product_list_url_outbound_alter(&$path, &$options, &$original_path) {
+
+    $fragmenets = explode('/', $path);
+
+    if(isset($fragmenets[0]) && $fragmenets[0] == 'product_list'){
+
+        try{
+
+            $result = db_query('SELECT alias FROM {url_alias} WHERE source = :source', array(":source" => $path))->fetchField();
+
+            if(!empty($result)){
+
+                $path = $result;
+
+            }
+
+        }
+        catch(Exception $e){
+
+            if(module_exists('devel')){
+                dpm($e);
+            }
+
+        }
+
+    }
+
+}
+
+
+/**
+ * Implements hook_node_presave().
+ */
+function sab_product_list_node_insert($node) {
+
+    try{
+
+        if($node->type == 'product_list' || $node->type == 'city'){
+
+            $url = drupal_get_query_parameters();
+
+            if(isset($url['plid'])){
+
+                $plid = $url['plid'];
+
+                if($node->type == 'product_list'){
+                    $product_list = get_product_list_info_by_plid($plid);
+
+                    if(isset($product_list->product_list)){
+
+                        db_update('eddy_product_list')->fields(array('has_node' => 1, 'nid' => $node->nid))->condition('plid', $plid)->execute();
+
+                    }
+                }
+
+                else if($node->type == 'city'){
+
+                    if(isset($node->nid) && !empty($node->field_plid[LANGUAGE_NONE][0]['value']) && !empty($node->field_city_tr[LANGUAGE_NONE][0]['tid'])){
+
+                        db_insert('eddy_product_list_city_redirect')
+                        ->fields(array(
+                            'city_nid' => $node->nid,
+                            'plid' => $node->field_plid[LANGUAGE_NONE][0]['value'],
+                            'city_tid' => $node->field_city_tr[LANGUAGE_NONE][0]['tid'],
+                            )
+                         )
+                        ->execute();
+
+                    }
+
+                }
+
+            }
+
+        }
+
+    }
+    catch(Exception $e){
+
+        if(module_exists('devel')){
+            dpm($e);
+        }
+
+    }
+
+}
+
+
+/**
+ * Implements hook_node_presave().
+ */
+function sab_product_list_node_presave($node) {
+
+    try{
+
+        if($node->is_new){
+
+            if($node->type == 'product_list' || $node->type == 'city'){
+
+                $url = drupal_get_query_parameters();
+
+                if(isset($url['plid'])){
+
+                    $plid = $url['plid'];
+
+                    $plid_result = db_query('SELECT alias FROM {url_alias} WHERE source = :source', array(':source' => 'product_list/' . $plid))->fetchField();
+
+                    if($node->type == 'product_list'){
+
+                        if(!empty($plid_result)){
+
+                            db_update('url_alias')->fields(array('alias' => $plid_result . '_has_node'))->condition('source', 'product_list/' . $plid)->execute();
+                            $node->path['alias'] = $plid_result;
+
+                        }
+
+                    }elseif($node->type == 'city'){
+
+                        $product_list = get_product_list_info_by_plid($plid);
+
+                        $city_name = "";
+
+                        if(array_key_exists('city', $url))
+                            $city_name = $url['city'];
+
+                        if(!empty($city_name)){
+
+                            //If the referrring product list page is a node.
+                            if(isset($product_list->product_list) && $product_list->product_list->has_node && isset($product_list->product_list->nid)){
+
+                                $node_result = db_query('SELECT alias FROM {url_alias} WHERE source = :source', array(':source' => 'node/' . $product_list->product_list->nid))->fetchField();
+
+                                if(!empty($node_result)){
+
+                                    foreach(explode('/', $node_result) as $key=>$section){
+                                        if($key == 0){
+                                            $node->path['alias'] = $section . '/' . $city_name;
+                                        }else{
+                                            $node->path['alias'] .='/'.$section;
+                                        }
+                                    }
+
+                                }
+
+                            }
+                            else if(!empty($plid_result)){
+
+                                foreach(explode('/', $plid_result) as $key=>$section){
+                                    if($key == 0){
+                                        $node->path['alias'] = $section . '/' . $city_name;
+                                    }else{
+                                        $node->path['alias'] .='/'.$section;
+                                    }
+                                }
+
+                            }
+
+                        }
+
+                        if(array_key_exists('city', $url)){
+
+                            $q = db_select('field_data_field_country_tr', 'c')
+                            ->fields('s', array('entity_id'))
+                            ->condition('s.field_safe_name_value', check_plain($url['city']))
+                            ->condition('m.vid', '28', '=')
+                            ->condition('m.plid', $plid, '=');
+                            $q->join('eddy_product_list_taxonomy_term_mapping', 'm', 'm.tid = c.field_country_tr_tid ');
+                            $q->join('field_data_field_safe_name', 's', 's.entity_id = c.entity_id and s.entity_type = \'taxonomy_term\' and s.bundle = \'cities\'');
+                            $results = $q->execute()->fetchCol();
+
+                            $city_tids = array();
+                            foreach($results as $result){
+
+                                $city_tids[]['tid'] = $result;
+
+                            }
+
+                            if(!empty($city_tids)){
+
+                                $node->field_city_tr[LANGUAGE_NONE] = $city_tids;
+
+                            }
+
+                        }
+
+                        cache_clear_all('*', 'cache_sab_faceted_nav', TRUE);
+
+                    }
+
+                }
+
+            }
+        }else{
+
+            if($node->type == 'city'){
+                cache_clear_all('*', 'cache_sab_faceted_nav', TRUE);
+            }
+
+        }
+
+        if($node->type == 'product_list' || $node->type == 'city'){
+            $node->path['pathauto'] = FALSE;
+        }
+
+    }
+    catch(Exception $e){
+
+        if(module_exists('devel')){
+            dpm($e);
+        }
+
+    }
+
+}
+
+/**
+ * Implements hook_node_view().
+ */
+function sab_product_list_node_view($node) {
+
+    $plid= 0;
+
+    if($node->type == 'product_list' ){
+
+        try{
+
+            //Sets Listings options when the page is a node and not a product list page.
+            $plid = db_query('SELECT plid FROM {eddy_product_list} WHERE nid = :nid', array(':nid' => $node->nid))->fetchField();
+
+        }
+        catch(Exception $e){
+
+            if(module_exists('devel')){
+                dpm($e);
+            }
+
+        }
+
+    }elseif($node->type == 'city'){
+
+        if(!empty($node->field_plid)){
+            $plid = $node->field_plid[LANGUAGE_NONE][0]['value'];
+        }
+
+    }
+
+    if($plid > 0){
+
+        $product_list = get_product_list_info_by_plid($plid);
+
+        if(isset($node->field_custom_title[LANGUAGE_NONE][0]['value'])){
+            drupal_set_title($node->field_custom_title[LANGUAGE_NONE][0]['value']);
+        }else{
+            drupal_set_title($product_list->title);
+        }
+
+        //Adds Query String Data
+        _add_product_list_query_string_data($product_list);
+
+        if($node->type == 'product_list'){
+            _product_list_check_city_qs_redirect($product_list);
+        }
+
+        set_sab_product_list_options($product_list->listing_options);
+        set_sab_product_list_current_product_list($product_list);
+
+        drupal_add_js(array('plid' => $product_list->plid), 'setting');
+        drupal_add_js(drupal_get_path('module', 'sab_product_list') . "/scripts.js");
+
+    }
+
+}
+
+
+/**
+ * Implements hook_node_delete().
+ */
+function sab_product_list_node_delete($node){
+
+    try{
+
+        if($node->type == 'product_list'){
+
+            $plid = db_query('SELECT plid FROM {eddy_product_list} WHERE nid = :nid', array($node->nid))->fetchField();
+
+            if(is_numeric($plid)){
+
+                //Updates Product List table to remove node info.
+                db_update('eddy_product_list')->fields(array('has_node' => 0, 'nid' => NULL))->condition('plid', $plid)->execute();
+
+                $result = db_query('SELECT alias FROM {url_alias} WHERE source = :source', array(':source' => 'product_list/' . $plid))->fetchField();
+                db_update('url_alias')->fields(array('alias' => str_replace('_has_node', '', $result)))->condition('source', 'product_list/' . $plid)->execute();
+
+            }
+
+        }elseif($node->type == 'city'){
+
+            try{
+                db_delete('eddy_product_list_city_redirect')
+                    ->condition('city_nid', $node->nid)
+                    ->execute();
+
+            }catch(Exception $e){
+
+                dpm($e);
+
+            }
+
+            cache_clear_all('*', 'cache_sab_faceted_nav', TRUE);
+        }
+    }
+    catch(Exception $e){
+
+        if(module_exists('devel')){
+            dpm($e);
+        }
+
+    }
+
+}
+
+
+/**
+ * Implements hook_form_node_form_alter().
+ */
+function sab_product_list_form_node_form_alter(&$form, $form_state,$fid){
+
+    $product_list = new stdClass;
+
+    if(isset($form['type']['#value'])){
+
+        $type = $form['type']['#value'];
+
+        if($type == 'product_list' || $type == 'city'){
+
+            $url = drupal_get_query_parameters();
+
+            if(isset($url['plid'])){
+
+                $plid = $url['plid'];
+
+                $product_list = get_product_list_info_by_plid($plid);
+
+                if($type == 'product_list'){
+
+                    $form['title']['#default_value'] = $product_list->title;
+                    foreach($form as $k => $v){
+
+                        if (preg_match('/_tr/', $k)) {
+                            unset($form[$k]);
+                        }
+
+                    }
+
+                }
+
+
+
+                if($type == 'city'){
+                    $city = '';
+
+                    $form['field_plid']['#access'] = 0;
+                    $form['field_plid'][LANGUAGE_NONE][0]['value']['#default_value'] = $plid;
+                    if(array_key_exists('city', $url)){
+                        $city = $url['city'];
+                    }
+
+                    $form['title']['#default_value'] = $city . ", " . $product_list->title;
+
+                    foreach($form as $k => $v){
+
+                        if (preg_match('/_tr/', $k)) {
+                            unset($form[$k]);
+                        }
+
+                    }
+
+                }
+            }elseif($type == 'city'){
+
+                foreach($form as $k => $v){
+
+                    if (preg_match('/_tr/', $k)) {
+                        unset($form[$k]);
+                    }
+
+                }
+            }
+
+        }
+
+    }
+
+}
+
+
+/**
+ * Implements hook_eddy_listing_list_request_alter().
+ */
+function sab_product_list_eddy_listing_list_request_alter(&$options, $list_fields, $node){
+
+    try{
+
+        global $base_url;
+
+        if(isset($list_fields->filter_source) && $list_fields->filter_source == 'node'){
+
+            //Gets Mappings for Product List Node pages.
+            if(isset($node->type) && ($node->type == 'product_list' || $node->type == 'city')){
+
+                if(get_sab_product_list_current_product_list() != NULL){
+
+                    $product_list = get_sab_product_list_current_product_list();
+
+                }else{
+
+                    $plid = db_select('eddy_product_list', 'p')
+                    ->fields('p', array('plid'))
+                    ->condition('nid', $node->nid)
+                    ->execute()
+                    ->fetchfield();
+
+                    if($node->type == 'city'){
+                        if(isset($node->field_plid) && !empty($node->field_plid))
+                            $plid = $node->field_plid[LANGUAGE_NONE][0]['value'];
+
+                            $q = db_select('taxonomy_term_data', 't')
+                                    //->join('field_data_field_external_id', 'e', 't.tid = e.entity_id and e.entity_type = \'taxonomy_term\' and e.bundle = \'cities\'')
+                                    //->join('field_data_field_city_tr', 'c', 'c.field_city_tr_tid = t.tid and c.entity_type = \'node\' and ce.bundle = \'city\'')
+                                    ->fields('e', array('field_external_id_value'))
+                                    ->condition('c.entity_id', $node->nid);
+                            $q->join('field_data_field_external_id', 'e', 't.tid = e.entity_id and e.entity_type = \'taxonomy_term\' and e.bundle = \'cities\'');
+                            $q->join('field_data_field_city_tr', 'c', 'c.field_city_tr_tid = t.tid and c.entity_type = \'node\' and c.bundle = \'city\'');
+                            $city = $q->execute()->fetchCol();
+
+                            if(!empty($city)){
+                                $options['city'] = $city;
+                            }
+
+
+                    }
+
+                    $product_list = get_product_list_info_by_plid($plid);
+
+                }
+
+                if(isset($product_list)){
+                    $options = array_merge($options, $product_list->listing_options);
+                }
+
+                if(!isset($options['campus_type'])){
+                    $options['campus_type'] = array(); //Need to look into why this is throwing an error.
+                }
+
+            }
+
+            $qs = array_change_key_case(drupal_get_query_parameters(), CASE_LOWER);
+
+            //For Product List AJAX Requests
+            if(arg(0) == 'eddy-listing-ajax' && !isset($node->nid) && isset($qs["plid"]) && is_numeric($qs["plid"])){
+
+                //$referring_path = parse_url(str_replace($base_url . '/', '', $_SERVER['HTTP_REFERER']), PHP_URL_PATH);
+
+                //$result = db_query('SELECT source FROM {url_alias} WHERE alias = :alias', array(':alias' => $referring_path))->fetchField();
+
+                //if(!empty($result)){
+
+                    //$plid = str_replace('product_list/', '', $result);
+
+                    $plid = $qs["plid"];
+
+                    if(is_numeric($plid)){
+
+                        $product_list = get_product_list_info_by_plid($plid);
+
+                        if(!empty($product_list->listing_options)){
+
+                            $options = array_merge($options, $product_list->listing_options);
+
+                        }
+
+                    }
+
+                //}
+
+            }
+
+            if(arg(0) == 'product_list' || (arg(0) == 'node' && $node->type=='city')){
+
+                $options = array_merge($options, get_sab_product_list_options());
+
+                if(!isset($options['campus_type'])){
+                    $options['campus_type'] = array(); //Need to look into why this is throwing an error.
+                }
+
+            }
+
+            sab_listing_set_options_from_query_string($options);
+
+        }
+
+    }
+    catch(Exception $e){
+
+        if(module_exists('devel')){
+            dpm($e);
+        }
+
+    }
+
+}
+
+/**
+ * Implements hook_eddy_listing_list_result_alter().
+ */
+function sab_product_list_eddy_listing_list_result_alter(&$list, $list_fields){
+
+    //if($list_fields->machine_name == "product-list" && count($list) == 0 && arg(0) != 'node'){
+
+    //    $meta_robots = array(
+    //        '#type' => 'html_tag',
+    //        '#tag' => 'meta',
+    //        '#attributes' => array(
+    //            'name' => 'robots',
+    //            'content' =>  'noindex, follow'
+    //        )
+    //    );
+    //    drupal_add_html_head( $meta_robots, 'meta_robots' );
+
+    //}
+
+}
+
+
+/**
+ * Adds Query String Paramaters to the options array.
+ */
+function sab_listing_set_options_from_query_string(&$options){
+
+    $queryStrings = array(
+        array(
+            'option_name' => 'level',
+            'vocab_name' => 'levels',
+            'query_strings' => array('level'),
+        ),
+        array(
+            'option_name' => 'duration',
+            'vocab_name' => 'durations',
+            'query_strings' => array('duration'),
+        ),
+        array(
+            'option_name' => 'work_type',
+            'vocab_name' => 'work_types',
+            'query_strings' => array('work_type'),
+        ),
+        array(
+            'option_name' => 'term',
+            'vocab_name' => 'terms',
+            'query_strings' => array('term', 'terms'),
+        ),
+    );
+
+    $qs = array_change_key_case(drupal_get_query_parameters(), CASE_LOWER);
+
+    //Get City Options
+    if(isset($qs['in']) && isset($options['country'][0])){
+
+        $options['city'] = sab_product_list_get_city_is_id_from_safe_name($qs['in'], $options['country'][0]);
+
+    }
+    else if(isset($qs['in']) && isset($options['state'][0])){
+
+        $options['city'] = sab_product_list_get_city_is_id_from_safe_name($qs['in'], $options['state'][0]);
+
+    }
+
+    //All other Query String Options
+    foreach($queryStrings as $queryString){
+
+        foreach($queryString['query_strings'] as $v){
+
+            if(!empty($qs[$v])){
+                $options[$queryString['option_name']] = sab_listing_get_is_ids_from_qs($qs[$v], $queryString['vocab_name']);
+            }
+
+        }
+
+    }
+
+}
+
+
+/**
+ * Gets The Taxonomy Term for a City by its Safe Name
+ */
+function sab_product_list_get_city_term_from_safe_name($safe_name, $country_is_id){
+    $o = array();
+
+    try{
+
+        $q = db_select('taxonomy_term_data', 't')
+            ->fields('t', array('tid'))
+            ->condition('s.field_safe_name_value', check_plain($safe_name))
+            ->condition('ce.field_external_id_value', $country_is_id);
+        $q->join('field_data_field_external_id', 'e', 't.tid = e.entity_id and e.entity_type = \'taxonomy_term\' and e.bundle = \'cities\'');
+        $q->join('field_data_field_safe_name', 's', 't.tid = s.entity_id and s.entity_type = \'taxonomy_term\' and s.bundle = \'cities\'');
+        $q->join('field_data_field_country_tr', 'c', 't.tid = c.entity_id and c.entity_type = \'taxonomy_term\' and c.bundle = \'cities\'');
+        $q->join('field_data_field_external_id', 'ce', 'c.field_country_tr_tid = ce.entity_id and ce.entity_type = \'taxonomy_term\' and ce.bundle = \'countries\'');
+        $r = $q->execute()->fetchCol();
+
+        if(!empty($r)){
+
+            $o = taxonomy_term_load_multiple($r);
+        }
+
+    }
+    catch(Exception $e){
+
+        if(module_exists('devel')){
+            dpm($e);
+        }
+
+    }
+
+    return $o;
+
+}
+
+
+/**
+ * Gets The IS id for a City by its Safe Name
+ */
+function sab_product_list_get_city_is_id_from_safe_name($safe_name, $country_is_id){
+
+    $o = array();
+
+    try{
+
+        $q = db_select('taxonomy_term_data', 't')
+            ->fields('e', array('field_external_id_value'))
+            ->condition('s.field_safe_name_value', check_plain($safe_name))
+            ->condition('ce.field_external_id_value', $country_is_id);
+        $q->join('field_data_field_external_id', 'e', 't.tid = e.entity_id and e.entity_type = \'taxonomy_term\' and e.bundle = \'cities\'');
+        $q->join('field_data_field_safe_name', 's', 't.tid = s.entity_id and s.entity_type = \'taxonomy_term\' and s.bundle = \'cities\'');
+        $q->join('field_data_field_country_tr', 'c', 't.tid = c.entity_id and c.entity_type = \'taxonomy_term\' and c.bundle = \'cities\'');
+        $q->join('field_data_field_external_id', 'ce', 'c.field_country_tr_tid = ce.entity_id and ce.entity_type = \'taxonomy_term\' and ce.bundle = \'countries\'');
+        $r = $q->execute()->fetchCol();
+
+        if(!empty($r)){
+
+            $o = $r;
+
+        }
+
+    }
+    catch(Exception $e){
+
+        if(module_exists('devel')){
+            dpm($e);
+        }
+
+    }
+
+    return $o;
+
+}
+
+
+/**
+ * Returns IS Ids from a Query String Param. If the values are strings then it will lookup the IS id by term name.
+ */
+function sab_listing_get_is_ids_from_qs($qs_value, $term_vocab){
+
+    $output = array();
+
+    try{
+
+        $qs_array = explode(",", strtolower($qs_value));
+
+        $allowed = sab_listing_get_allowed_query_strings();
+
+        foreach($qs_array as $v){
+
+            if(isset($allowed[$term_vocab][$v]) && isset($allowed[$term_vocab][$v]->external_id)){
+
+                $output[] = $allowed[$term_vocab][$v]->external_id;
+
+            }
+
+        }
+
+    }
+    catch(Exception $e){
+
+        if(module_exists('devel')){
+            dpm($e);
+        }
+
+    }
+
+    return $output;
+
+}
+
+/**
+ * Sets Program Details so it can be used in blocks
+ */
+function set_sab_product_list_options($data = NULL) {
+
+    $output = &drupal_static(__FUNCTION__);
+
+    if (isset($data)) {
+        $output = $data;
+    }
+    return $output;
+
+}
+
+/**
+ * Sets Program Details so it can be used in blocks
+ */
+function set_sab_product_list_current_product_list($data = NULL) {
+
+    $output = &drupal_static(__FUNCTION__);
+    if (isset($data)) {
+        $output = $data;
+    }
+    return $output;
+
+}
+
+/**
+ * Gets Program Details so it can be used in block.
+ */
+function get_sab_product_list_options() {
+
+    return set_sab_product_list_options();
+
+}
+
+/**
+ * Gets Program Details so it can be used in block.
+ */
+function get_sab_product_list_current_product_list() {
+
+    return set_sab_product_list_current_product_list();
+
+}
+
+/**
+ * Gets Program Details so it can be used in block.
+ */
+function sab_product_list_show_block() {
+
+    if(arg(0) == 'product_list'){
+
+        return TRUE;
+
+    }
+    else if(arg(0) == 'node' && is_numeric(arg(1))){
+
+        $node = node_load(arg(1));
+
+        if(node_is_page($node) && ($node->type == 'product_list' || $node->type == 'city')){
+
+            return TRUE;
+
+        }
+
+    }
+
+    return FALSE;
+
+}
+
+/**
+ * Callback function for Product Listings View.
+ */
+function sab_product_list_view($plid){
+
+    if (preg_match('/_has_node/', request_path())) {
+
+        try{
+
+            if(is_numeric($plid)){
+
+                $nid = db_select('eddy_product_list', 'p')
+                        ->fields('p', array('nid'))
+                        ->condition('plid', $plid)
+                        ->execute()
+                        ->fetchfield();
+
+                if(!empty($nid)){
+                    drupal_goto("node/$nid", array(), 301);
+                }
+
+            }
+
+        }catch(Exception $e){
+
+            if(module_exists('devel')){
+                dpm($e);
+            }
+
+        }
+
+        drupal_goto("worldwide", array(), 301);
+
+    }
+
+    if (module_exists('globalredirect') && preg_match('/product_list/', request_path())){
+
+        $product_list = get_product_list_info_by_plid($plid);
+        $url = product_list_url($product_list);
+        drupal_goto($url, array(), 301);
+
+    }
+
+    if(is_numeric($plid)){
+
+        $output = "";
+
+        $product_list = get_product_list_info_by_plid($plid);
+
+        drupal_set_title($product_list->title);
+
+        //Adds Query String Data
+        _add_product_list_query_string_data($product_list);
+
+        _product_list_check_city_qs_redirect($product_list);
+
+        set_sab_product_list_options($product_list->listing_options);
+        set_sab_product_list_current_product_list($product_list);
+
+        drupal_add_js(array('plid' => $product_list->plid), 'setting');
+        drupal_add_js(drupal_get_path('module', 'sab_product_list') . "/scripts.js");
+
+        drupal_alter("product_list_view", $product_list);
+
+        //if(user_access('create product_list content') || user_access('create city content')){
+
+        //    $output .= '<ul class="tabs--primary nav nav-tabs"><li class="active"><a href="">View</a></li>';
+        //    if(user_access('create product_list content')){
+        //        $output .= '<li>' . l('Create Node', 'node/add/product-list', array('query' => array('plid' => $product_list->plid))) . '</li>';
+        //    }
+
+        //    if(user_access('create city content')){
+        //        $city = '';
+        //        $qs = array_change_key_case(drupal_get_query_parameters(), CASE_LOWER);
+        //        if(array_key_exists('in',$qs)){
+        //            $city = $qs['in'];
+        //            $output .= '<li>' . l('Create City', 'node/add/city', array('query' => array('plid' => $product_list->plid, 'city' => $city))) . '</li>';
+        //        }
+
+
+        //    }
+
+        //    $output .= '</ul>';
+
+        //}
+
+        return '';
+
+    }else{
+
+        drupal_not_found();
+
+    }
+
+}
+
+
+/**
+ * Returns a Product List URL from the Product List Object
+ * @param $product_list (object) Product List Object
+ * @param $type 'source' or 'alias'
+ */
+function product_list_url($product_list, $type = 'source', $options = array()){
+
+    if(isset($product_list->product_list->has_node)){
+
+        $product_list->has_node = $product_list->product_list->has_node;
+
+    }
+
+    if(isset($product_list->product_list->nid)){
+
+        $product_list->nid = $product_list->product_list->nid;
+
+    }
+
+    $source = 'product_list/' . $product_list->plid;
+
+    if($product_list->has_node){
+
+        $source = 'node/' . $product_list->nid;
+
+    }
+
+    if($type == 'alias'){
+        return url($source, $options);
+    }
+    else{
+        return $source;
+    }
+
+}
+
+function get_product_list_info_by_plid($plid){
+
+    $output = new stdClass;
+    $output->plid = 0;
+
+    $output->listing_options = array();
+    $output->title = "";
+
+    try{
+
+        $product_list = db_select('eddy_product_list', 'p')
+            ->fields('p')
+            ->condition('plid', $plid)
+            ->execute()
+            ->fetchObject();
+
+        $mappings = db_select('eddy_product_list_taxonomy_term_mapping', 'p')
+            ->fields('p')
+            ->condition('plid', $plid)
+            ->execute()
+            ->fetchAll();
+
+        $output->product_list = $product_list;
+        $output->relationships = $mappings;
+        $output->plid = $product_list->plid;
+
+
+        $tids = array();
+        foreach($mappings as $k => $v){
+
+            $tids[] = $v->tid;
+
+        }
+
+        //Set the City TID if the page is a City Node
+        _sab_product_list_set_city_node_tid($tids, $plid);
+
+        $terms = taxonomy_term_load_multiple($tids);
+
+        $options = array();
+        $titles = array();
+
+        $output->relationships_terms = $terms;
+
+        foreach($terms as $term){
+
+            if(isset($term->field_external_id[LANGUAGE_NONE][0]['value'])){
+
+                $external_id = $term->field_external_id[LANGUAGE_NONE][0]['value'];
+
+                switch($term->vid){
+
+                    case 4:
+
+                        $options['category'][]  = $external_id;
+                        $titles['category'] = $term->name;
+
+                        break;
+
+                    case 3:
+
+                        $options['level'][]  = $external_id;
+                        $titles['level'] = $term->name;
+
+                        break;
+
+                    case 21:
+
+                        $options['language'][]  = $external_id;
+                        $titles['language'] = $term->name;
+
+                        break;
+
+                    case 24:
+
+                        $options['type'][]  = $external_id;
+                        $titles['type'] = $term->name;
+
+                        break;
+
+                    case 25:
+
+                        $options['specialty'][]  = $external_id;
+                        $titles['specialty'] = $term->name;
+
+                        break;
+
+                    case 27:
+
+                        $options['term'][]  = $external_id;
+                        $titles['term'] = $term->name;
+
+                        break;
+
+                    case 28:
+
+                        $parent = taxonomy_get_parents($term->tid);
+                        if(!empty($parent)){
+                            $options['state'][]  = $external_id;
+                            $titles['state'] = $term->name;
+                        }else{
+                            $options['country'][]  = $external_id;
+                            $titles['country'] = $term->name;
+                        }
+
+                        break;
+
+                    case 12:
+
+                        $options['city'][]  = $external_id;
+                        $titles['city'] = $term->name;
+
+                        break;
+
+                    case 19:
+
+                        $options['placement_audience'][]  = $external_id;
+                        $titles['placement_audience'] = $term->name;
+
+                        break;
+
+                }
+
+            }
+
+        }
+
+        $title = implode(' - ', $titles);
+
+        $output->listing_options = $options;
+        $output->title = $title;
+        $output->titles = $titles;
+
+    }catch(Exception $e){
+
+        if(module_exists('devel')){
+            dpm($e);
+        }
+
+    }
+
+    return $output;
+
+
+}
+
+/**
+ * Adds All Query String Data to the Product List Object.
+ */
+function _add_product_list_query_string_data(&$product_list){
+
+    $qs = array_change_key_case(drupal_get_query_parameters(), CASE_LOWER);
+
+    //Get City Options
+    if(isset($qs['in']) && (isset($product_list->listing_options['country'][0]) || isset($product_list->listing_options['state'][0]))){
+
+        if(isset($product_list->listing_options['country'][0]))
+            $country = $product_list->listing_options['country'][0];
+        else
+            $country = $product_list->listing_options['state'][0];
+
+        $city_terms = sab_product_list_get_city_term_from_safe_name($qs['in'], $country);
+
+        foreach($city_terms as $city_term){
+            if(isset($city_term->field_external_id[LANGUAGE_NONE][0]['value'])){
+
+                $product_list->listing_options['city'][] = $city_term->field_external_id[LANGUAGE_NONE][0]['value'];
+                $product_list->titles['city'] =$city_term->name;
+            }
+            if(isset($city_term->tid)){
+
+                $product_list->relationships_terms[$city_term->tid] = $city_term;
+
+            }
+
+        }
+
+    }
+
+    $allowed = sab_listing_get_allowed_query_strings();
+
+    if(isset($qs['duration']) && in_array($qs['duration'], array_keys($allowed['durations']))){
+
+        $duration = $allowed['durations'][$qs['duration']];
+
+        if(!empty($duration->external_id)){
+            $product_list->listing_options['duration'][] = $duration->external_id;
+        }
+
+        if(!empty($duration->entity_id)){
+            $product_list->relationships_terms[$duration->entity_id] = taxonomy_term_load($duration->entity_id);
+        }
+
+    }
+
+    if(isset($qs['work_type']) && in_array($qs['work_type'], array_keys($allowed['work_types']))){
+
+        $work_type = $allowed['work_types'][$qs['work_type']];
+
+        if(!empty($work_type->external_id)){
+            $product_list->listing_options['work_type'][] = $work_type->external_id;
+        }
+
+        if(!empty($work_type->entity_id)){
+            $product_list->relationships_terms[$work_type->entity_id] = taxonomy_term_load($work_type->entity_id);
+        }
+
+    }
+
+    if(isset($qs['level']) && in_array($qs['level'], array_keys($allowed['levels']))){
+
+        $level = $allowed['levels'][$qs['level']];
+
+        if(!empty($level->external_id)){
+            $product_list->listing_options['level'][] = $level->external_id;
+        }
+
+        if(!empty($level->entity_id)){
+            $product_list->relationships_terms[$level->entity_id] = taxonomy_term_load($level->entity_id);
+        }
+
+    }
+
+    if(isset($qs['term']) && in_array($qs['term'], array_keys($allowed['terms']))){
+
+        $term = $allowed['terms'][$qs['term']];
+
+        if(!empty($term->external_id)){
+            $product_list->listing_options['term'][] = $term->external_id;
+        }
+
+        if(!empty($term->entity_id)){
+            $product_list->relationships_terms[$term->entity_id] = taxonomy_term_load($term->entity_id);
+        }
+
+    }
+
+}
+
+
+
+/**
+ * Callback for a page title when this entity is displayed.
+ */
+function sab_product_list_title($entity) {
+ // return t('SAB Title (item_description=@item_description)', array('@item_description' => $entity->item_description));
+    return t('SAB Product List title');
+}
+
+
+
+/**
+ * Get a list of Product List records by certain taxonomy_term_filters
+ */
+function sab_product_list_get_list($params, $key = "") {
+
+    $output = array();
+
+    try{
+
+        $params += array(
+            'program_type' => 0,
+            'level' => 0,
+            'country' => 0,
+            'specialty' => 0,
+            'term' => 0,
+            'intensive_languages' => 0,
+            'audience' => 0,
+            'is_not_null' => '',
+            'results_count' => 0,
+        );
+
+        //$q = db_select('eddy_faceted_nav_product_list_term_mapping', 'm');
+        //$q->join('eddy_product_list', 'p', 'm.plid = p.plid');
+
+        //$q->fields('p');
+        //$q->fields('m');
+
+        //Use view instead of query.
+        $q = db_select('vw_faceted_nav', 'f');
+        $q->fields('f');
+
+        foreach($params as $k => $v){
+
+            if(!in_array($k, array('is_not_null', 'results_count'))){
+
+                if($v > 0){
+
+                    $q->condition($k, $v);
+
+                }
+                else if($k == $params['is_not_null']){
+
+                    $q->isNotNull($k);
+
+                }else{
+
+                    $q->isNull($k);
+
+                }
+
+            }
+
+        }
+
+        //$q->orderBy($params['order_by'][0], $params['order_by'][1]);
+
+        if($params['results_count'] > 0)
+            $q->range(0, $params['results_count']);
+
+        $start_time = date('s') . substr((string)microtime(), 1, 7);
+
+        if(!empty($key)){
+            $output = $q->execute()->fetchAllAssoc($key);
+        }else{
+            $output = $q->execute()->fetchAll();
+        }
+
+        $end_time = date('s') . substr((string)microtime(), 1, 7);
+
+        $requestTime = ($end_time - $start_time);
+
+        //dpm($output);
+
+    }
+    catch(Exception $e){
+
+        if(module_exists('devel')){
+            dpm($e);
+        }
+
+    }
+
+    return $output;
+
+}
+
+
+function _sab_product_list_set_city_node_tid(&$tids, $plid){
+
+    try{
+
+        $node = new stdClass;
+
+        if(arg(0) == 'node' && is_numeric(arg(1))){
+
+            $node = node_load(arg(1));
+
+        }else if(isset($_GET['nid']) && is_numeric($_GET['nid'])){
+
+            $node = node_load($_GET['nid']);
+
+        }
+
+        if(isset($node->type) && $node->type == 'city'){
+            //for city, check node plid field
+            $query = "SELECT c.field_city_tr_tid as tid FROM {field_data_field_city_tr} c \n";
+            $query .= " join {node} n on n.nid = c.entity_id";
+            $query .= " join {field_data_field_plid} p on p.entity_id = c.entity_id and p.bundle = 'city' and p.entity_type = 'node'";
+            $query .= " join {url_alias} u on 'node/' + CONVERT(VARCHAR(50), c.entity_id) = u.source";
+            $query .= " where p.field_plid_value =$plid and u.source = 'node/$node->nid'";
+
+            $city_tid = db_query($query)->fetchAllAssoc('tid');
+
+            if(!empty($city_tid)){
+                $tids[] = key($city_tid);
+            }
+
+        }
+
+    }catch(Exception $e){
+
+        if(module_exists('devel')){
+            dpm($e);
+        }
+
+    }
+
+    return $tids;
+
+}
+
+function create_city_node(){
+
+    $qs = array_change_key_case(drupal_get_query_parameters(), CASE_LOWER);
+
+    if(user_access('create city content')){
+
+        if(array_key_exists('in',$qs) || (arg(2)=='city'))
+            return TRUE;
+
+    }
+    return FALSE;
+}
+
+function create_product_list_node(){
+
+    $qs = array_change_key_case(drupal_get_query_parameters(), CASE_LOWER);
+
+    if(user_access('create product_list content')){
+        if(!array_key_exists('in',$qs))
+            return TRUE;
+    }
+    return FALSE;
+
+
+}
+
+function create_node_redirect($path, $type, $id){
+
+    $city = '';
+    $referer = parse_url($_SERVER['HTTP_REFERER']);
+
+    if(array_key_exists('query', $referer)){
+
+       $qs = explode('in=', $referer['query']);
+       if(count($qs) >1){
+           $city = $qs[1];
+       }
+    }
+
+    $plid = $id;
+    $querystring = array();
+    if($path == 'node/add/city'){
+        if($type == 'node'){
+
+            $plid = db_select('eddy_product_list', 'p')
+                ->fields('p', array('plid'))
+                ->condition('nid', $id)
+                ->execute()
+                ->fetchfield();
+            $querystring = array(
+                'nid' => $id,
+                );
+        }
+
+        $querystring['plid'] = $plid;
+        $querystring['city'] = $city;
+
+    }else{
+        $querystring = array(
+                'plid' => $plid,
+            );
+    }
+    $options = array(
+        'query' => $querystring,
+        );
+
+    drupal_goto($path, $options);
+}
+
+/**
+ * Checks if a City page exists and redirects the user.
+ */
+function _product_list_check_city_qs_redirect($product_list){
+
+    try{
+
+        $city = array();
+        foreach($product_list->relationships_terms as $term){
+
+            if($term->vocabulary_machine_name == 'cities'){
+                $city = $term->tid;
+                break;
+            }
+
+        }
+
+        if(!empty($city)){
+
+            $nid = db_select("eddy_product_list_city_redirect", "cr")
+                ->fields('cr', array('city_nid'))
+                ->condition('plid', $product_list->plid)
+                ->condition('city_tid', $city)
+                ->execute()
+                ->fetchfield();
+
+            if(!empty($nid)){
+                drupal_goto("node/$nid", array(), 301);
+            }
+
+        }
+
+    }
+    catch(Exception $e){
+
+        dpm($e);
+
+    }
+
+}

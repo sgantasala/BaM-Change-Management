@@ -1,0 +1,112 @@
+<?php
+
+/**
+ * Implements hook_node_view().
+ */
+function eddy_gtm_datalayer_node_view($node){
+
+    if(node_is_page($node)){
+        
+        $show_data_layer = TRUE;
+        
+        drupal_alter('eddy_gtm_datalayer_show_on_node', $show_data_layer, $node);
+        
+        if($show_data_layer){
+            
+            $values = array();
+            
+            $values['program_campus_type'] = eddy_gtm_datalayer_get_field_name_value($node, 'field_type_tr') . " " . eddy_gtm_datalayer_get_field_name_value($node, 'field_campus_type_tr');
+            
+            $values['program_campus_type'] = ltrim($values['program_campus_type'], " ");
+            
+            if(empty($values['program_campus_type'])){
+                unset($values['program_campus_type']);
+            }
+            
+            $fields = array(
+                'field_level_tr',
+                'field_category_tr',
+                'field_subject_tr',
+                'field_specialty_tr',
+                'field_country_tr',
+                'field_state_tr',
+            );
+            
+            foreach($fields  as $field){
+                
+                $field_value = eddy_gtm_datalayer_get_field_name_value($node, $field);
+                
+                if(!empty($field_value)){
+                    $values[$field] = $field_value;
+                }
+                
+            }
+            
+            if($node->type == 'product_list' || $node->type == 'regional_product_list'){
+                
+                $values['page_type'] = 'Listing';
+                
+            }else if($node->type == 'aggregator_page' && !empty($node->field_type_tr[LANGUAGE_NONE][0])){
+
+                $values['page_type'] = 'Listing';
+                
+            }else{
+                
+                $values['page_type'] = node_type_get_name($node);
+                
+            }
+            
+            drupal_alter('eddy_gtm_datalayer_node_values', $values, $node);
+            
+            if(!empty($values)){
+                
+                $d = array();
+                $count = 1;
+                foreach($values as $key => $value){
+                    
+                    $key = str_replace('field_', '', $key);
+                    $key = str_replace('_tr', '', $key);
+                    
+                    //$key = 'contentgroup-' . $count;
+                    $d[$key] = ltrim($value, " ");
+                    $count ++;
+                    
+                }
+                
+                $e = array(
+                     "#tag" => "script",
+                     "#attributes" => array (
+                         "type" => "text/javascript",
+                     ),
+                     "#value" => 'dataLayer=[' . json_encode($d) . '];',
+                );
+                
+                drupal_add_html_head($e, 'google_datalayer');
+                
+            }
+            
+        }
+        
+    }
+    
+}
+
+
+function eddy_gtm_datalayer_get_field_name_value($node, $field_name){
+
+    $output = "";
+    
+    if(!empty($node->{$field_name}[LANGUAGE_NONE][0]['taxonomy_term']->name)){
+        
+        $output = $node->{$field_name}[LANGUAGE_NONE][0]['taxonomy_term']->name;
+        
+    }else if(!empty($node->{$field_name}[LANGUAGE_NONE][0])){
+    
+        $term = taxonomy_term_load($node->{$field_name}[LANGUAGE_NONE][0]['tid']);
+        $output = $term->name;
+    
+    }
+    
+    return $output;
+    
+}

@@ -1,0 +1,298 @@
+<?php
+require_once (dirname(__FILE__) . '/eddy_blank_slate_page.data.inc');
+
+function eddy_blank_slate_page_form_blank_slate_page_node_form_alter(&$form, &$form_state, $form_id)
+{
+   
+    //if($form_id = 'blank_slate_page_node_form'){
+        if(!empty($form_state['node'])){
+            $form_node = $form_state['node'];
+            if(!empty($form['field_page_form']) ){
+                $eddy_form_option_list = _get_eddy_form_option_list();
+                if(count($eddy_form_option_list)>0){
+                    foreach($eddy_form_option_list as $k => $v)
+                    {
+                        $form['field_page_form']['und']['#options'][$k] = $v;
+                    }
+                }
+                if(!empty($form_node->field_page_form[LANGUAGE_NONE][0]['value'])){
+                    $form['field_page_form']['und']['#default_value'][] = $form_node->field_page_form[LANGUAGE_NONE][0]['value'];
+                }
+            }
+
+            if(!empty($form['field_institution_from_is'])){
+                $institution_option_list = _get_institutions_option_list();
+
+                if(count($institution_option_list) >0 ){
+                    foreach($institution_option_list as $k => $v)
+                    {
+                        $form['field_institution_from_is']['und']['#options'][$k] = $v;
+                    }
+                }
+                if(!empty($form_node->field_institution_from_is[LANGUAGE_NONE][0]['value'])){
+                    $form['field_institution_from_is']['und']['#default_value'][] = $form_node->field_institution_from_is[LANGUAGE_NONE][0]['value'];
+                }
+            }
+        }
+     
+   // }
+    return $form;
+}
+
+function eddy_blank_slate_page_css_alter(&$css) {
+
+    if(arg(0) == 'node'){
+        $nid = arg(1);
+        if(is_numeric($nid)){
+            $node = node_load($nid);
+            if($node->type == 'blank_slate_page'){
+                unset($css['//netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css']);
+            }
+        }
+    }
+
+}
+
+
+function eddy_blank_slate_page_preprocess_page(&$vars){
+    $vars['page']['use_site_header'] = '0';
+    $vars['page']['use_site_footer'] = '0';
+    if(isset($vars['node'])){
+        $node = $vars['node'];
+
+        if($node->type == 'blank_slate_page'){
+            if (property_exists($node, 'field_institution_from_is'))
+            {
+                if (count( $node->field_institution_from_is))
+                {
+                    if(!empty($node->field_institution_from_is[LANGUAGE_NONE][0]['value'])){
+                        drupal_add_js(array('eddy_blank_slate_page' => array('institutionid' =>  $node->field_institution_from_is[LANGUAGE_NONE][0]['value'])),'setting');
+                    }
+                }
+            }
+            if (property_exists($node, 'field_category_tr'))
+            {
+                if (count( $node->field_category_tr))
+                {
+                    $category_result = taxonomy_term_load($node->field_category_tr[LANGUAGE_NONE][0]['tid']);
+                    if (!is_null($category_result)) {
+                        $category_taxonomy_term = $category_result;
+                        if (property_exists($category_taxonomy_term , 'field_external_id'))
+                        {
+                            if (count($category_taxonomy_term->field_external_id))
+                            {
+                                drupal_add_js(array('eddy_blank_slate_page' => array('categoryid' =>  $category_taxonomy_term->field_external_id[LANGUAGE_NONE][0]['value'])),'setting');
+                            }
+                        }
+                    }
+                }
+            }
+            if (property_exists($node, 'field_subject_tr'))
+            {
+                if (count( $node->field_subject_tr))
+                {
+                    $subject_result = taxonomy_term_load($node->field_subject_tr[LANGUAGE_NONE][0]['tid']);
+                    if (!is_null($subject_result)) {
+                        $subject_taxonomy_term = $subject_result;
+                        if (property_exists($subject_taxonomy_term , 'field_external_id'))
+                        {
+                            if (count($subject_taxonomy_term->field_external_id))
+                            {
+                                drupal_add_js(array('eddy_blank_slate_page' => array('subjectid' =>  $subject_taxonomy_term->field_external_id[LANGUAGE_NONE][0]['value'])),'setting');
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (property_exists($node, 'field_use_site_header'))
+            {
+                if (count($node->field_use_site_header))
+                {
+                   
+                    if(!empty($node->field_use_site_header[LANGUAGE_NONE][0]['value'])){
+                     
+                        $vars['page']['use_site_header'] = $node->field_use_site_header[LANGUAGE_NONE][0]['value'];
+                    }
+                }
+            }
+            if (property_exists($node, 'field_use_site_footer'))
+            {
+                if (count($node->field_use_site_footer))
+                {
+
+                    if(!empty($node->field_use_site_footer[LANGUAGE_NONE][0]['value'])){
+                        $vars['page']['use_site_footer'] = $node->field_use_site_footer[LANGUAGE_NONE][0]['value'];
+                    }
+                }
+            }
+
+            drupal_add_js(drupal_get_path('module', 'eddy_blank_slate_page') . '/js/eddy_blank_slate_page.js', array('every_page' => true));
+        }
+    }
+}
+
+/**
+ * Implements template_process_node().
+ */
+function eddy_blank_slate_page_process_node(&$vars) {
+    $node = $vars['node'];
+    if($node->type == 'blank_slate_page' && node_is_page($node)){
+        drupal_add_js(drupal_get_path('module', 'eddy_blank_slate_page') . '/js/blank_slate_page_form_wizard.js');
+    }
+
+}
+
+
+///**
+// * Implements hook_node_info()
+// */
+//function eddy_blank_slate_page_node_info() {
+//     $items = array(
+//    'blank_slate_page' => array(
+//      'name' => t('Blank Slate Page'),
+//      'base' => 'node_content',
+//      'description' => '',
+//      'has_title' => '1',
+//      'title_label' => t('Title'),
+//      'help' => '',
+//    ),
+//  );
+//  drupal_alter('node_info', $items);
+//  return $items;
+//}
+
+
+///**
+// * Implement hook_form()
+// */
+//function eddy_blank_slate_page_form($node, $form_state) {
+
+//    return node_content_form($node, $form_state);
+//}
+
+///**
+// * Implements hook_field_group_info().
+// */
+////function eddy_blank_slate_page_field_group_info() {
+////    $export = array();
+
+////    $field_group = new stdClass();
+////    $field_group->disabled = FALSE; /* Edit this to true to make a default field_group disabled initially */
+////    $field_group->api_version = 1;
+////    $field_group->identifier = 'group_content_tab|node|eddy_blank_slate_page|form';
+////    $field_group->group_name = 'group_content_tab';
+////    $field_group->entity_type = 'node';
+////    $field_group->bundle = 'eddy_blank_slate_page';
+////    $field_group->mode = 'form';
+////    $field_group->parent_name = '';
+////    $field_group->data = array(
+////      'label' => 'Content',
+////      'weight' => '0',
+////      'children' => array(
+////        0 => 'body',
+////        1 => 'title',
+////      ),
+////      'format_type' => 'tab',
+////      'format_settings' => array(
+////        'formatter' => 'closed',
+////        'instance_settings' => array(
+////          'description' => '',
+////          'classes' => 'group-content-tab field-group-tab',
+////          'required_fields' => 1,
+////        ),
+////      ),
+////    );
+////    $export['group_content_tab|node|eddy_blank_slate_page|form'] = $field_group;
+
+////    $field_group = new stdClass();
+////    $field_group->disabled = FALSE; /* Edit this to true to make a default field_group disabled initially */
+////    $field_group->api_version = 1;
+////    $field_group->identifier = 'group_settings|node|eddy_blank_slate_page|form';
+////    $field_group->group_name = 'group_settings';
+////    $field_group->entity_type = 'node';
+////    $field_group->bundle = 'eddy_blank_slate_page';
+////    $field_group->mode = 'form';
+////    $field_group->parent_name = '';
+////    $field_group->data = array(
+////      'label' => 'Schhool Settings',
+////      'weight' => '1',
+////      'children' => array(
+////        0 => 'field_category_tr',
+////        1 => 'field_institution_tr',
+////        2 => 'field_subject_tr',
+////      ),
+////      'format_type' => 'tab',
+////      'format_settings' => array(
+////        'label' => 'Schhool Settings',
+////        'instance_settings' => array(
+////          'required_fields' => 1,
+////          'classes' => '',
+////          'description' => '',
+////        ),
+////        'formatter' => 'closed',
+////      ),
+////    );
+////    $export['group_settings|node|eddy_blank_slate_page|form'] = $field_group;
+
+////    $field_group = new stdClass();
+////    $field_group->disabled = FALSE; /* Edit this to true to make a default field_group disabled initially */
+////    $field_group->api_version = 1;
+////    $field_group->identifier = 'group_tracking|node|eddy_blank_slate_page|form';
+////    $field_group->group_name = 'group_tracking';
+////    $field_group->entity_type = 'node';
+////    $field_group->bundle = 'eddy_blank_slate_page';
+////    $field_group->mode = 'form';
+////    $field_group->parent_name = '';
+////    $field_group->data = array(
+////      'label' => 'Tracking',
+////      'weight' => '2',
+////      'children' => array(
+////        0 => 'field_school_tracking_code',
+////      ),
+////      'format_type' => 'tab',
+////      'format_settings' => array(
+////        'formatter' => 'closed',
+////        'instance_settings' => array(
+////          'description' => '',
+////          'classes' => 'group-tracking field-group-tab',
+////          'required_fields' => 1,
+////        ),
+////      ),
+////    );
+////    $export['group_tracking|node|eddy_blank_slate_page|form'] = $field_group;
+
+////  return $export;
+////}
+
+///**
+// * Implements hook_taxonomy_default_vocabularies().
+// */
+//function eddy_blank_slate_page_taxonomy_default_vocabularies() {
+//    return array(
+//      'categories' => array(
+//        'name' => 'Categories',
+//        'machine_name' => 'categories',
+//        'description' => 'Enterprise list of Categories which match the Integrated System.',
+//        'hierarchy' => 0,
+//        'module' => 'taxonomy',
+//        'weight' => -8,
+//      ),
+//      'institutions' => array(
+//        'name' => 'Institutions',
+//        'machine_name' => 'institutions',
+//        'description' => '',
+//        'hierarchy' => 0,
+//        'module' => 'taxonomy',
+//        'weight' => 0,
+//      ),
+//      'subjects' => array(
+//        'name' => 'Subjects',
+//        'machine_name' => 'subjects',
+//        'description' => 'Enterprise list of Subjects which match the Integrated System.',
+//        'hierarchy' => 0,
+//        'module' => 'taxonomy',
+//        'weight' => -7,
+//    ),
+//  );
+//}

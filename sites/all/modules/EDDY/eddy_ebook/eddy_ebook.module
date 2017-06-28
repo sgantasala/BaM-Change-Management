@@ -1,0 +1,125 @@
+<?php
+function eddy_ebook_ds_layout_info()
+{
+    $path = drupal_get_path('module', 'eddy_ebook');
+    $layout_templates_root = $path . '/layouts';
+    
+    $layouts['eddy_ebook_layout_bootstrap'] = array(
+      'label' => t('Eddy ebook layout bootstrap'),
+      'path' => $layout_templates_root,
+      'regions' => array(
+       'feature_content_region' => t('feature_content_region'),
+        'webform_header_content_region' => t('webform_header_content_region'),
+        'webform_region' => t('webform_region'),
+        'webform_footer_content_region' => t('webform_footer_content_region'),
+        'content_region' => t('content_region')
+      ),
+      'form' => TRUE,
+      'image' => TRUE,
+    );
+    $layouts['eddy_ebook_layout_lander_bootstrap'] = array(
+     'label' => t('Eddy ebook layout lander bootstrap'),
+     'path' => $layout_templates_root,
+     'regions' => array(
+      'feature_content_region' => t('feature_content_region'),
+       'webform_header_content_region' => t('webform_header_content_region'),
+       'webform_region' => t('webform_region'),
+       'webform_footer_content_region' => t('webform_footer_content_region'),
+       'content_region' => t('content_region')
+     ),
+     'form' => TRUE,
+     'image' => TRUE,
+   );
+    return $layouts;
+}
+
+function eddy_ebook_preprocess_node(&$vars){    
+    //ebook page ui support
+    if(node_is_page($vars['node']))
+    {
+        //ebook_form
+        if($vars['node']->type == 'ebook_page'){
+           drupal_add_css('https://fonts.googleapis.com/css?family=Oswald:400,700,300',array('type' => 'external'));
+        }
+    }
+}
+
+function eddy_ebook_preprocess_webform_form(&$vars) 
+{
+    if(isset($vars['form']))
+    {
+        if(isset($vars['form']['submitted']))
+        {
+            if(isset($vars['form']['submitted']['Source']))
+            {
+                if(isset($vars['form']['submitted']['Source']['#value']))
+                {
+                    if($vars['form']['submitted']['Source']['#value'] == 'mbaebook')
+                    {
+                        
+                        $two_column_md = 'col-xs-12 col-sm-12 col-md-6';
+                        $one_column_md = 'col-xs-12 col-sm-12 col-md-12';
+                        
+                        foreach($vars['form']['submitted'] as $key=>$value) { 
+                            if(isset($vars['form']['submitted'][$key]))
+                            {
+                                if(isset($vars['form']['submitted'][$key]['#type']))
+                                {
+                                    switch($vars['form']['submitted'][$key]['#type'])
+                                    {
+                                        case 'textfield' :
+                                        case 'select' :
+                                        case 'webform_email':
+                                        case 'checkboxes':
+
+                                            $vars['form']['submitted'][$key]['#prefix'] = '<div class="clearfix"></div><div class="'.$one_column_md.'">';
+                                            $vars['form']['submitted'][$key]['#suffix'] = '</div>'; 
+                                            break;
+                                        
+                                    }
+                                }
+                            }  
+                        } 
+                    }
+                }
+            }
+        }
+    }
+}
+
+function eddy_ebook_form_alter(&$form, &$form_state, $form_id)
+{
+    if(isset($form['submitted']['Source']))
+    {
+        if(isset($form['submitted']['Source']['#value']))
+        {
+            if($form['submitted']['Source']['#value'] == 'mbaebook')
+            {
+                $form['#validate'][]='eddy_ebook_form_validate';
+                return $form;
+            }
+        }
+    }
+}
+
+function eddy_ebook_form_validate(&$form, &$form_state){
+    
+    if(isset($form['submitted']['Source']))
+    {
+        if(isset($form['submitted']['Source']['#value']))
+        {
+            if($form['submitted']['Source']['#value'] == 'mbaebook')
+            {         
+                $zipcode = $form_state['values']['submitted']['PostalCode'];            
+                $request_zipcode = drupal_http_request(variable_get("eddy_forms_engine_service_domain") . "/FormValidation/ZipCodeStateCountryCheck/?CountryCode=US&ZipCode=" . urlencode($zipcode) . "&callback=scholarship");
+                $result_zipcode = str_replace(');','',str_replace('scholarship(','',$request_zipcode->data));
+                if($result_zipcode == "false"){
+                    $error_msg = $zipcode . " is not a valid Postal Code. \n";//07.$&#.030 will make validation failed.
+                    form_set_error('submitted][PostalCode', t($error_msg));
+                }
+            }
+        }
+    }
+}
+
+

@@ -1,0 +1,6 @@
+name = EDDY Listings Ads
+description = Advertisements in the middle of listings .
+core = 7.x
+package = Eddy Core Business
+
+dependencies[] = eddy_listing

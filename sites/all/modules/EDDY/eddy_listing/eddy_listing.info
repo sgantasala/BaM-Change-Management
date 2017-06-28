@@ -1,0 +1,12 @@
+name = Eddy Listing
+description = This is a module to display listings of programs or schools.
+core = 7.x
+package = Eddy Core Business
+version = "7.x-2.5"
+
+stylesheets[all][] = eddy_listing.css
+scripts[] = eddy_listing.js
+
+dependencies[] = eddy_core
+dependencies[] = eddy_services
+dependencies[] = devel

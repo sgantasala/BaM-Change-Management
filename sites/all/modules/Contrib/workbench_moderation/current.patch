@@ -1,0 +1,207 @@
+diff --git a/views/workbench_moderation.view.inc b/views/workbench_moderation.view.inc
+index 1296929..bf02a21 100644
+--- a/views/workbench_moderation.view.inc
++++ b/views/workbench_moderation.view.inc
+@@ -343,7 +343,7 @@ $handler->display->display_options['filters']['state']['expose']['reduce'] = 1;
+ /* Filter criterion: Workbench Moderation: Current */
+ $handler->display->display_options['filters']['current']['id'] = 'current';
+ $handler->display->display_options['filters']['current']['table'] = 'workbench_moderation_node_history';
+-$handler->display->display_options['filters']['current']['field'] = 'current';
++$handler->display->display_options['filters']['current']['field'] = 'is_current';
+ 
+ /* Display: Needs Review Page */
+ $handler = $view->new_display('page', 'Needs Review Page', 'needs_review_page');
+@@ -364,7 +364,7 @@ $handler->display->display_options['defaults']['filters'] = FALSE;
+ /* Filter criterion: Workbench Moderation: Current */
+ $handler->display->display_options['filters']['current']['id'] = 'current';
+ $handler->display->display_options['filters']['current']['table'] = 'workbench_moderation_node_history';
+-$handler->display->display_options['filters']['current']['field'] = 'current';
++$handler->display->display_options['filters']['current']['field'] = 'is_current';
+ $handler->display->display_options['filters']['current']['value'] = '1';
+ /* Filter criterion: Workbench Moderation: State */
+ $handler->display->display_options['filters']['state']['id'] = 'state';
+@@ -429,7 +429,7 @@ $handler->display->display_options['filters']['uid_current']['value'] = '1';
+ /* Filter criterion: Workbench Moderation: Current */
+ $handler->display->display_options['filters']['current']['id'] = 'current';
+ $handler->display->display_options['filters']['current']['table'] = 'workbench_moderation_node_history';
+-$handler->display->display_options['filters']['current']['field'] = 'current';
++$handler->display->display_options['filters']['current']['field'] = 'is_current';
+ $handler->display->display_options['filters']['current']['value'] = '1';
+ /* Filter criterion: Content: Title */
+ $handler->display->display_options['filters']['title']['id'] = 'title';
+ 
+ 
+**Done
+ 
+ 
+ 
+ 
+ 
+diff --git a/workbench_moderation.install b/workbench_moderation.install
+index 1dffed4..680f934 100644
+--- a/workbench_moderation.install
++++ b/workbench_moderation.install
+@@ -128,7 +128,7 @@ function workbench_moderation_schema() {
+         'default' => 0,
+         'disp-width' => '10',
+       ),
+-      'current' => array(
++      'is_current' => array(
+         'description' => 'Indicated the current revision of a node.',
+         'type' => 'int',
+         'unsigned' => TRUE,
+@@ -569,3 +569,22 @@ function workbench_moderation_update_7007() {
+     '%to' => $transition->to_name,
+   ));
+ }
+ 
+ 
+ 
+
++
++/**
++ * Comply with SQL-99:  Rename the 'current' column to 'is_current'.
++ */
++function workbench_moderation_update_7008() {
++  $table = 'workbench_moderation_node_history';
++  $field = 'current';
++  $field_new = 'is_current';
++  $spec = array(
++    'description' => 'Indicated the current revision of a node.',
++    'type' => 'int',
++    'unsigned' => TRUE,
++    'not null' => TRUE,
++    'default' => 0,
++    'disp-width' => '10',
++  );
++  db_change_field($table, $field, $field_new, $spec);
++  return t("Renamed 'current' column in node_history table");
++}
+
+
+
+
+
+
+
+
+\ No newline at end of file
+diff --git a/workbench_moderation.module b/workbench_moderation.module
+index 87fac94..e758bdc 100644
+--- a/workbench_moderation.module
++++ b/workbench_moderation.module
+@@ -544,7 +544,7 @@ function _workbench_moderation_moderate_access($node, $state) {
+   $my_revision = $node->workbench_moderation['my_revision'];
+   $next_states = workbench_moderation_states_next($my_revision->state, $user, $node->type);
+   $access = node_access('update', $node, $user)       // the user can edit the node
+-          && $my_revision->current                    // this is the current revision (no branching the revision history)
++          && $my_revision->is_current                    // this is the current revision (no branching the revision history)
+           && (!empty($next_states))                   // there are next states the user may transition to
+           && isset($next_states[$state]);             // this state is in the available next states
+ 
+@@ -704,7 +704,7 @@ function workbench_moderation_node_update($node) {
+       'nid' => $node->nid,
+       'vid' => $node->vid,
+       'uid' => $user->uid,
+-      'current' => TRUE,
++      'is_current' => TRUE,
+       'published' => FALSE,
+       'stamp' => $node->changed,
+     );
+@@ -1057,7 +1057,7 @@ function workbench_moderation_node_data($node) {
+     'uid' => $node->uid,
+     'stamp' => $node->changed,
+     'published' => $node->status,
+-    'current' => 1,
++    'is_current' => 1,
+   );
+ 
+   // We'll store moderation state information in an array on the node.
+@@ -1088,7 +1088,7 @@ function workbench_moderation_node_data($node) {
+     }
+   }
+ 
+-  $current->current = 1;
++  $current->is_current = 1;
+   $node->workbench_moderation['current'] = $current;
+ 
+   // Fetch the published revision. There may not be a workbench_moderation
+@@ -1147,7 +1147,7 @@ function workbench_moderation_node_data($node) {
+         'uid' => $node->uid,
+         'stamp' => $node->changed,
+         'published' => 0,
+-        'current' => 0,
++        'is_current' => 0,
+       );
+     }
+   }
+@@ -1482,17 +1482,17 @@ function workbench_moderation_moderate($node, $state) {
+     'nid' => $node->nid,
+     'vid' => $node->vid,
+     'uid' => $user->uid,
+-    'current' => $current,
++    'is_current' => $current,
+     'published' => ($state == workbench_moderation_state_published()),
+     'stamp' => $_SERVER['REQUEST_TIME'],
+   );
+ 
+   // If this is the new 'current' moderation record, it should be the only one
+   // flagged 'current' in {workbench_moderation_node_history}.
+-  if ($new_revision->current) {
++  if ($new_revision->is_current) {
+     $query = db_update('workbench_moderation_node_history')
+       ->condition('nid', $node->nid)
+-      ->fields(array('current' => 0))
++      ->fields(array('is_current' => 0))
+       ->execute();
+   }
+ 
+@@ -1516,7 +1516,7 @@ function workbench_moderation_moderate($node, $state) {
+   // Update the node's content_moderation information so that we can publish it
+   // if necessary.
+   $node->workbench_moderation['my_revision'] = $new_revision;
+-  if ($new_revision->current) {
++  if ($new_revision->is_current) {
+     $node->workbench_moderation['current'] = $new_revision;
+   }
+   // Handle the published revision.
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+  
+   
+diff --git a/workbench_moderation.views.inc b/workbench_moderation.views.inc
+index 9512698..42dc06c 100644
+--- a/workbench_moderation.views.inc
++++ b/workbench_moderation.views.inc
+@@ -121,7 +121,7 @@ function workbench_moderation_views_data() {
+       'handler' => 'views_handler_sort',
+     ),
+   );
+-  $data['workbench_moderation_node_history']['current'] = array(
++  $data['workbench_moderation_node_history']['is_current'] = array(
+     'title' => t('Current'),
+     'help' => t('Whether or not this is the current revision.'),
+     'field' => array(
+@@ -145,7 +145,7 @@ function workbench_moderation_views_data() {
+       'title' => t('Moderation Links'),
+       'handler' => 'workbench_moderation_handler_field_links',
+       'click sortable' => FALSE,
+-      'additional fields' => array('nid', 'vid', 'current'),
++      'additional fields' => array('nid', 'vid', 'is_current'),
+     ),
+     'filter' => array(
+       'title' => t('User Can Moderate'),

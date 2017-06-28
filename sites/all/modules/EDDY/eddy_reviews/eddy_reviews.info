@@ -1,0 +1,13 @@
+name = EDDY Reviews
+description = This is a module to manage reviews of programs/institutions.
+core = 7.x
+package = Eddy Core Business
+version = "7.x-1.0"
+files[] = views/eddy_reviews.views.inc
+
+dependencies[] = eddy_services
+dependencies[] = sab_program_details
+
+stylesheets[all][] = style/eddy_reviews.css
+scripts[] = js/eddy_reviews.js
+

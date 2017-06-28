@@ -1,0 +1,1445 @@
+<?php
+
+    //This module have been depricated.
+
+///**
+// * Implements hook_menu().
+// */
+//function eddy_listing_faceted_nav_menu() {
+
+//  //GET Listings VIA AJAX
+//  $items['eddy-listing-ajax/set-postal-code'] = array(
+//    'page callback' => 'eddy_listing_faceted_nav_set_postal_code',
+//    'access callback' => TRUE,
+//  );
+  
+//  $items['eddy-listing-ajax/get-faceted-nav-by-entity/%'] = array(
+//    'page arguments' => array(2),
+//    'page callback' => 'eddy_listing_faceted_nav_by_is_entity',
+//    'access callback' => TRUE,
+//  );
+  
+//  $items['eddy-listing-ajax/get-faceted-nav-entity-multiple'] = array(
+//    'page callback' => 'eddy_listing_faceted_nav_by_multiple_entities',
+//    'access callback' => TRUE,
+//  );
+  
+//  return $items;
+  
+//}
+
+
+///**
+// * Implements hook_permission().
+// */
+//function eddy_listing_faceted_nav_permission() {
+//  return array(
+//    'view_eddy_listings_faceted_navigation' => array(
+//      'title' => t('View EDDY Listings Faceted Navigation'),
+//    ),
+//  );
+//}
+
+
+///**
+// * Implements hook_block_info().
+// */
+//function eddy_listing_faceted_nav_block_info() {
+
+//  $blocks = array();
+//  $blocks['eddy_faceted_nav_breadbox'] = array(
+//    'info' => t('EDDY: Listing Faceted Navigation - Bread Box'), 
+//    'cache' => DRUPAL_CACHE_PER_PAGE,
+//  );
+//  $blocks['eddy_faceted_nav_campus'] = array(
+//    'info' => t('EDDY: Listing Faceted Navigation - Campus Filters'), 
+//    'cache' => DRUPAL_CACHE_PER_PAGE,
+//  );
+//  $blocks['eddy_faceted_nav_campus_h'] = array(
+//    'info' => t('EDDY: Listing Faceted Navigation - Campus Filters Horizontal'), 
+//    'cache' => DRUPAL_CACHE_PER_PAGE,
+//  );
+//  $blocks['eddy_faceted_nav_levels'] = array(
+//    'info' => t('EDDY: Listing Faceted Navigation - Level Filters'), 
+//    'cache' => DRUPAL_CACHE_PER_PAGE,
+//  );
+//  $blocks['eddy_faceted_nav_categories'] = array(
+//    'info' => t('EDDY: Listing Faceted Navigation - Category Filters'), 
+//    'cache' => DRUPAL_CACHE_PER_PAGE,
+//  );
+//  $blocks['eddy_faceted_nav_subjects'] = array(
+//    'info' => t('EDDY: Listing Faceted Navigation - Subject Filters'), 
+//    'cache' => DRUPAL_CACHE_PER_PAGE,
+//  );
+//  $blocks['eddy_faceted_nav_accred'] = array(
+//    'info' => t('EDDY: Listing Faceted Navigation - Accreditation Filters'),
+//    'cache' => DRUPAL_CACHE_PER_PAGE,
+//  );
+//  $blocks['eddy_faceted_nav_credit'] = array(
+//    'info' => t('EDDY: Listing Faceted Navigation - Credits Accepted Filters'),
+//    'cache' => DRUPAL_CACHE_PER_PAGE,
+//  );
+  
+//  return $blocks;
+  
+//}
+
+///**
+// * Menu Callback to get Postal Code Detection.
+// */
+//function eddy_listing_faceted_nav_set_postal_code(){
+
+///*	$output = 0;
+
+//    if(!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+	
+//        //Code to detect Postal Code.
+//        if(isset($_COOKIE["user_postal_code"])){
+		
+//            $output = $_COOKIE["user_postal_code"];
+		
+//        }
+//        else if(variable_get('eddy_listings_detect_postal_code')){
+		
+//            //Keys to Map Maxmind's response.
+//            //http://dev.maxmind.com/geoip/legacy/web-services/#PHP
+//            $output_keys = array(
+//                'country_code',
+//                'country_name',
+//                'region_code',
+//                'region_name',
+//                'city_name',
+//                'latitude',
+//                'longitude',
+//                'metro_code',
+//                'area_code',
+//                'time_zone',
+//                'continent_code',
+//                'postal_code',
+//                'isp_name',
+//                'organization_name',
+//                'domain',
+//                'as_number',
+//                'netspeed',
+//                'user_type',
+//                'accuracy_radius',
+//                'country_confidence',
+//                'city_confidence',
+//                'region_confidence',
+//                'postal_confidence',
+//                'error'
+//            );
+			
+//            $ip = ip_address();
+//            $expire = REQUEST_TIME + 3600*24*30*12;
+			
+//            //Set Location Cookie Before for the JS code to read.
+//            if(!isset($_COOKIE["_LocationInfo"]) && !empty($ip) && $ip != '127.0.0.1'){
+
+//                //The calls should be limited since we only have a set amount.
+//                $results = file_get_contents("http://geoip.maxmind.com/e?l=q2uhQlFBs5BM&i=$ip");
+
+//                if(!empty($results)){
+				
+//                    $results_array = str_getcsv($results);
+//                    $results_array = array_pad($results_array, sizeof($output_keys), '');
+					
+//                    $combined = array_combine($output_keys, $results_array);
+
+//                    //Sets Cookie with all information in JSON format to be used elsewhere.
+//                    setcookie('_LocationInfo', json_encode($combined), $expire, '/');
+					
+//                    //Sets the "user_postal_code" which is used by the Zip Code Field on the site.
+//                    if(!empty($combined['postal_code'])){ 
+					
+//                        setcookie('user_postal_code', $combined['postal_code'], $expire, '/');
+//                        $output = $combined['postal_code'];
+						
+//                    }
+					
+//                }
+				
+//            }
+//            else if($ip == '127.0.0.1'){
+			
+//                //Sets the Zip Code to the Hoboken one when people are testing this on their local.
+//                setcookie('user_postal_code', '07030', $expire, '/');
+//                $output = '07030';
+				
+//            }
+			
+//        }
+//    }
+//*/
+//    $output = 0; 
+//    if(isset($_COOKIE["user_postal_code"])) { 
+//        $output = $_COOKIE["user_postal_code"]; 
+//    }
+	
+//    print $output;
+//    exit;
+
+//}
+
+///**
+// * Menu callback.
+// */
+//function eddy_listing_faceted_nav_by_is_entity($method = 'none'){
+
+//    drupal_add_http_header('Content-Type', 'application/json');
+	
+//    if($method == 'none'){
+		
+//        $output = array("message" => "Please define which method you would like to use.", "count" => 0);
+	
+//    }else{
+	
+//        $allowed_methods = array('levels', 'categories', 'subjects');
+	
+//        if(in_array($method, $allowed_methods)){
+
+//            $params = array();
+//            $params['nested_results_count'] = 1;
+			
+//            if(!empty($_GET['type'])) $params['type'] = explode(',', $_GET['type']);
+//            if(!empty($_GET['level'])) $params['level'] = explode(',', $_GET['level']);
+//            if(!empty($_GET['category'])) $params['category'] = explode(',', $_GET['category']);
+//            if(!empty($_GET['subject'])) $params['subject'] = explode(',', $_GET['subject']);
+//            if(!empty($_GET['campus_type'])) $params['campus_type'] = $_GET['campus_type'];
+			
+//            if(!empty($_GET['postal_code'])){
+			
+//                $params['geo_target']['radius'] = (!empty($_GET['radius'])) ? $_GET['radius'] : 25;
+//                $params['geo_target']['postal_code'] = $_GET['postal_code'];
+			
+//            }
+			
+//            if(!empty($_GET['trackid'])) $params['track_id'] = $_GET['trackid'];
+			
+//            switch($method){
+			
+//                case 'level':
+//                    $results = get_level_ids($params);
+//                break;
+//                case 'category':
+//                    $results = get_category_ids($params);
+//                break;
+//                case 'subject':
+//                    $results = get_subject_ids($params);
+//                break;
+			
+//            }
+			
+//            array_shift($results);
+			
+//            $output = array('type' => $method, 'count' => count($results), 'results' => $results);
+			
+//        }else{
+		
+//            $output = array("message" => "You have provided an invalid method name.", "count" => 0);
+			
+//        }
+	
+//    }
+	
+//    print json_encode($output);
+//    exit;
+
+//}
+
+///**
+// * Menu callback.
+// */
+//function eddy_listing_faceted_nav_by_multiple_entities(){
+
+//    drupal_add_http_header('Content-Type', 'application/json');
+//    $methods = (!empty($_GET['methods'])) ? explode(',', $_GET['methods']) : array();
+	
+//    $params = array();
+//    $params['nested_results_count'] = 1;
+	
+//    if(!empty($_GET['type'])) $params['type'] = explode(',', $_GET['type']);
+//    if(!empty($_GET['level'])) $params['level'] = explode(',', $_GET['level']);
+//    if(!empty($_GET['category'])) $params['category'] = explode(',', $_GET['category']);
+//    if(!empty($_GET['subject'])) $params['subject'] = explode(',', $_GET['subject']);
+//    if(!empty($_GET['campus_type'])) $params['campus_type'] = $_GET['campus_type'];
+	
+//    if(!empty($_GET['postal_code'])){
+	
+//        $params['geo_target']['radius'] = (!empty($_GET['radius'])) ? $_GET['radius'] : 25;
+//        $params['geo_target']['postal_code'] = $_GET['postal_code'];
+	
+//    }
+
+//    if(!empty($_GET['trackid'])) $params['track_id'] = $_GET['trackid'];
+	
+//    foreach($methods as $method){
+
+//        switch($method){
+	
+//            case 'level':
+//                $levels = get_level_ids($params);
+//                array_shift($levels);
+//                $output[$method] = array('name' => $method,'count' => count($levels),'results' => $levels);
+//            break;
+//            case 'category':
+//                $categories = get_category_ids($params);
+//                array_shift($categories);
+//                $output[$method] = array('name' => $method,'count' => count($categories),'results' => $categories);
+//            break;
+//            case 'subject':
+//                $subjects = get_subject_ids($params);
+//                array_shift($subjects);
+//                $output[$method] = array('name' => $method,'count' => count($subjects),'results' => $subjects);
+//            break;
+		
+//        }
+
+//    }
+	
+//    if($output == null){
+//        $output = array("message" => "You have provided an invalid method name.", "error" => 1);
+//    }
+	
+//    print json_encode($output);
+//    exit;
+
+//}
+
+
+///**
+// * Implements hook_block_view().
+// */
+//function eddy_listing_faceted_nav_block_view($delta="") {
+	
+//    drupal_add_js(	
+//        array(	
+//            'form_engine_service' => variable_get('eddy_forms_engine_service_domain'),	
+//        ), 'setting');
+		
+//    if(arg(0) == 'node' && !arg(2)){
+//        switch($delta){
+//            case 'eddy_faceted_nav_breadbox':
+//                $block['content'] = eddy_listing_faceted_nav_data()->BreadBox;
+//            break;
+//            case 'eddy_faceted_nav_campus':
+//                $block['content']['links'] = array(
+//                    '#markup' => eddy_listing_faceted_nav_data()->CampusFilter,
+//                );
+				
+//                $defaultaction = url('online-degrees');
+				
+//                if($node = eddy_listing_faceted_nav_data()->node){
+					
+//                    $form = drupal_get_form('get_zip_code_search_form');
+					
+//                    if(
+//                        $node->type != 'product_list' && 
+//                        $node->type != 'aggregator_page' || 
+//                        ($node->type == 'aggregator_page' && empty($node->field_type_tr))
+//                    ){
+//                        $form['#action'] = $defaultaction;
+//                    }
+
+//                    unset($form['form_token']);
+//                    unset($form['form_build_id']);
+//                    unset($form['form_id']);
+					
+//                    if(empty($node->field_campus_type_tr) || (!empty($node->field_campus_type_tr) && $node->field_campus_type_tr['und'][0]['taxonomy_term']->field_external_id['und'][0]['value'] != 1))
+//                        $block['content']['form'] = $form;
+
+//                }
+				
+//                $block['subject'] = t('Location');
+//            break;
+//            case 'eddy_faceted_nav_campus_h':
+				
+//                $form = drupal_get_form('get_zip_code_search_form_horizontal');
+				
+//                unset($form['form_token']);
+//                unset($form['form_build_id']);
+//                unset($form['form_id']);
+
+//                $block['content']['form'] = $form;
+//                $block['subject'] = '<none>';
+//            break;
+//            case 'eddy_faceted_nav_levels':
+//                $block['content'] = eddy_listing_faceted_nav_data()->LevelNodes;
+//                $block['subject'] = t('Degree Level');
+//            break;
+//            case 'eddy_faceted_nav_categories':
+//                $block['content'] = eddy_listing_faceted_nav_data()->CategoryNodes;
+//                $block['subject'] = t('Category');
+//            break;
+//            case 'eddy_faceted_nav_subjects':
+//                $block['content'] = eddy_listing_faceted_nav_data()->SubjectNodes;
+//                $block['subject'] = t('Subcategory');
+//            break;
+//            case 'eddy_faceted_nav_accred':
+//                $block['content'] = eddy_listing_faceted_nav_data()->AccreditationFilter;
+//                $block['subject'] = t('Accreditation');
+//            break;
+//            case 'eddy_faceted_nav_credit':
+//                $block['content'] = eddy_listing_faceted_nav_data()->CreditsFilter;
+//                $block['subject'] = t('Credits Accepted');
+//            break;
+//        }
+//        return $block;
+//    }
+	
+//}
+
+
+////Sets node data
+//function set_eddy_listing_faceted_nav_data($data = NULL) {
+//  $output = &drupal_static(__FUNCTION__);
+
+//  if (isset($data))
+//    $output = $data;
+
+//  return $output;
+  
+//}
+
+
+////Gets node data
+//function eddy_listing_faceted_nav_data() {
+  
+//  $output = set_eddy_listing_faceted_nav_data();
+  
+//  return $output;
+  
+//}
+
+
+///**
+// * Implements hook_node_view().
+// */
+//function eddy_listing_faceted_nav_node_view($node, $view_mode){
+	
+//    if(node_is_page($node) && $view_mode == 'full'){
+//        eddy_listings_set_facets($node);
+//    }
+	
+//}
+
+
+//function eddy_listings_set_facets($node){
+
+//    $customFacets = get_custom_facets();
+	
+//    $cid = 'facet_html_node_' . $node->nid;
+
+//    // if ($cache = cache_get($cid, 'cache_eddy_faceted_nav')) {
+//        // set_eddy_listing_faceted_nav_data($cache->data);
+//    // }
+//    // else{
+	
+//        $type = '';
+//        $level = '';
+//        $category = '';
+//        $subject = '';
+	
+//        if(!empty($node->field_type_tr["und"][0]["tid"]))
+//            $type = $node->field_type_tr["und"][0]["tid"];
+			
+//        if(!empty($node->field_campus_type_tr["und"][0]["tid"]))
+//            $campus_type = $node->field_campus_type_tr["und"][0]["tid"];
+//        else
+//            $campus_type = 'IS NULL';
+	
+//        if(!empty($node->field_level_tr["und"][0]["tid"]))
+//            $level = $node->field_level_tr["und"][0]["tid"];
+		
+//        if(!empty($node->field_category_tr["und"][0]["tid"]))
+//            $category = $node->field_category_tr["und"][0]["tid"];
+			
+//        if(!empty($node->field_subject_tr["und"][0]["tid"]))
+//            $subject = $node->field_subject_tr["und"][0]["tid"];
+	
+//        $breadBoxItems = array();
+		
+//        if(!empty($type)){
+		
+//            foreach(get_navigation_nodes(array('type' => $type, 'campus_type' => $campus_type, 'content_type' => 'aggregator_page')) as $item)
+//                $typeUrl = 'node/' . $item->nid;
+				
+//        }
+		
+//        $currentURL = explode("/", url('node/' . $node->nid));
+//        $firstItem = explode("-", $currentURL[0]);
+		
+//        $bothLink = array('degree-programs');
+//        $onlineLink = array('online-degrees');
+//        $campusLink = array('local-campus-degree-programs');
+		
+//        if(in_array("certificate", $firstItem)){
+//            $bothLink = array('certificate-programs');
+//            $onlineLink = array('online-certificate-programs');
+//            $campusLink = array('campus-certificate-programs');
+//        }
+		
+//        else if(in_array("courses", $firstItem)){
+//            $bothLink = array('courses');
+//            $onlineLink = array('online-courses');
+//            $campusLink = array('campus-courses');
+//        }
+
+//        if($node->type == 'product_list')
+//            unset($currentURL[0]);
+//        else
+//            $currentURL = array();
+	
+//        //Sets Campus Filters
+//        $campusLinks = array();
+//        $campusLinks[0] = l('Both', implode("/", array_merge($bothLink, $currentURL)));
+//        $campusLinks[1] = l('Online', implode("/", array_merge($onlineLink, $currentURL)));
+//        $campusLinks[2] = l('Campus', implode("/", array_merge($campusLink, $currentURL)));
+		
+//        $campusFilters = theme_item_list(
+//            array(
+//                'items' => $campusLinks, 
+//                'title' => '',
+//                'type' => 'ul',
+//                'attributes' => array('class' => 'faceted-nav-campus-type clearfix'),
+//            )
+//        );
+		
+//        if(!empty($_GET['zipcode']) && is_numeric($_GET['zipcode']) && strlen($_GET['zipcode']) == 5){
+//            $breadBoxItems['campusCaption'] = "<strong>Zip Code:</strong>";
+//            $breadBoxItems['campusLink'] = build_breadbox_link($_GET['zipcode'], 'node/' . $node->nid, $node, array('radius','zipcode'));
+//        }
+
+//        //Sets the Level Nodes to get the value.
+//        if(!empty($type))
+//            $levelNodesNoFacet = get_cached_level_nodes($type, $campus_type);
+			
+//        //Degree Level Filter
+//        $levelNodes = null;
+		
+//        if(empty($level) && !empty($category) && !empty($subject)){
+
+//            foreach($levelNodesNoFacet as $lnode) 
+//                $levelNodesFacet[$lnode->field_level_tr["und"][0]["tid"]] = $lnode;
+				
+//            $levelNodes = get_navigation_nodes(
+//                array(
+//                    'type' => $type, 
+//                    'campus_type' => $campus_type,
+//                    'level' => "IS NOT NULL", 
+//                    'category' => $category, 
+//                    'subject' => $subject,
+//                )
+//            );
+			
+//            foreach($levelNodes as $index => $lnode) {
+//                if(!empty($levelNodesFacet[$lnode->field_level_tr["und"][0]["tid"]]))
+//                    $lnode->title = $levelNodesFacet[$lnode->field_level_tr["und"][0]["tid"]]->title;
+//                else
+//                    unset($levelNodes[$index]);
+//            }
+		
+//        }
+//        else if(empty($level) && !empty($category)){
+			
+//            foreach($levelNodesNoFacet as $lnode)
+//                $levelNodesFacet[$lnode->field_level_tr["und"][0]["tid"]] = $lnode;
+				
+//            $levelNodes = get_navigation_nodes(
+//                array(
+//                    'type' => $type, 
+//                    'campus_type' => $campus_type,
+//                    'level' => "IS NOT NULL", 
+//                    'category' => $category,
+//                )
+//            );
+			
+//            foreach($levelNodes as $index => $lnode) {
+//                if(!empty($levelNodesFacet[$lnode->field_level_tr["und"][0]["tid"]]))
+//                    $lnode->title = $levelNodesFacet[$lnode->field_level_tr["und"][0]["tid"]]->title;
+//                else
+//                    unset($levelNodes[$index]);
+					
+//            }
+			
+//        }
+//        else if(empty($level) && !empty($type)){
+//            $levelNodes = get_cached_level_nodes($type, $campus_type);
+//        }
+//        else{
+			
+//            if(empty($level))
+//                $levelNodes = get_cached_level_nodes(4, $campus_type); //Make Configurable
+			
+//            //Bread Box
+//            if(!empty($type)){
+				
+//                foreach(get_navigation_nodes(array('type' => $type, 'campus_type' => $campus_type, 'level' => $level, 'results_count' => 1)) as $item)
+//                    $LevelLinkTitle = $item->title;
+
+//                $LevelLinkPath = "";
+//                if(!empty($category) && empty($subject)){
+//                    foreach(get_navigation_nodes(array('type' => $type, 'campus_type' => $campus_type, 'category' => $category, 'results_count' => 1)) as $item)
+//                        $LevelLinkPath = 'node/' . $item->nid;	
+//                }
+//                else if(!empty($subject)){
+//                    foreach(get_navigation_nodes(array('type' => $type, 'campus_type' => $campus_type, 'category' => $category, 'subject' => $subject, 'results_count' => 1)) as $item)
+//                        $LevelLinkPath = 'node/' . $item->nid;
+//                }
+//                else{
+//                    $LevelLinkPath = $typeUrl;
+//                }
+				
+//                if(!empty($LevelLinkPath)){
+//                    $breadBoxItems['levelCaption'] = "<strong>Degree Level</strong>";
+//                    $breadBoxItems['levelLink'] = build_breadbox_link($LevelLinkTitle, $LevelLinkPath, $node);
+//                }
+//            }
+//        }
+		
+//        $categoryNodes = null;
+		
+//        //Category Filter
+//        if(!empty($level) && empty($category)){
+//            $categoryNodes = get_navigation_nodes(array('type' => $type, 'campus_type' => $campus_type, 'level' => $level, 'category' => "IS NOT NULL"));
+//            //get_navigation_nodes_from_service(array('type' => $type, 'level' => $level));
+//        }
+//        else if(empty($category) && !empty($type))
+//            $categoryNodes = get_navigation_nodes(array('type' => $type, 'campus_type' => $campus_type, 'category' => 'IS NOT NULL'));
+//        else{
+			
+//            if(empty($category))
+//                $categoryNodes = get_navigation_nodes(array('type' => 4, 'campus_type' => $campus_type, 'category' => 'IS NOT NULL'));  //Make Configurable
+			
+//            //Bread Box
+//            if(!empty($type)){
+//                foreach(get_navigation_nodes(array('type' => $type, 'campus_type' => $campus_type, 'category' => $category, 'results_count' => 1)) as $item)
+//                    $CategoryLinkTitle = $item->title;
+				
+//                $CategoryLinkPath = "";
+//                if(!empty($level)){
+//                    foreach(get_navigation_nodes(array('type' => $type, 'campus_type' => $campus_type, 'level' => $level, 'results_count' => 1)) as $item)
+//                        $CategoryLinkPath = 'node/' . $item->nid;
+//                }
+//                else{
+//                    $CategoryLinkPath = $typeUrl;
+//                }
+				
+//                if(!empty($CategoryLinkPath)){
+//                    $breadBoxItems['categoryCaption'] = "<strong>Category</strong>";
+//                    $breadBoxItems['categoryLink'] = build_breadbox_link($CategoryLinkTitle, $CategoryLinkPath, $node);
+//                }
+//            }
+		
+//        }
+		
+//        //Subject Filter
+//        $subjectsNodes = null;
+		
+//        if(!empty($level) && !empty($category) && empty($subject))
+//            $subjectsNodes = get_navigation_nodes(array('type' => $type, 'campus_type' => $campus_type, 'level' => $level, 'category' => $category, 'subject' => "IS NOT NULL"));
+			
+//        else if(!empty($category) && empty($subject))
+//            $subjectsNodes = get_navigation_nodes(array('type' => $type, 'campus_type' => $campus_type, 'category' => $category, 'subject' => "IS NOT NULL"));
+			
+//        else if(!empty($subject)){
+			
+//            //Bread Box
+//            foreach(get_navigation_nodes(array('type' => $type, 'category' => $category, 'campus_type' => $campus_type, 'subject' => $subject, 'results_count' => 1)) as $item)
+//                $SubjectLinkTitle = $item->title;
+			
+//            $SubjectLinkPath = "";
+//            if(empty($level)){
+//                foreach(get_navigation_nodes(array('type' => $type, 'campus_type' => $campus_type, 'category' => $category, 'results_count' => 1)) as $item)
+//                    $SubjectLinkPath = 'node/' . $item->nid;
+//            }
+//            else {
+//                foreach(get_navigation_nodes(array('type' => $type, 'campus_type' => $campus_type, 'level' => $level, 'category' => $category, 'results_count' => 1)) as $item)
+//                    $SubjectLinkPath = 'node/' . $item->nid;
+//            }
+			
+//            if(!empty($SubjectLinkPath)){
+//                $breadBoxItems['subjectCaption'] = "<strong>Subcategory</strong>";
+//                $breadBoxItems['subjectLink'] = build_breadbox_link($SubjectLinkTitle, $SubjectLinkPath, $node);
+//            }
+
+//        }
+
+//        if(!empty($levelNodes)){
+			
+//            $request = array(
+//                'type' => array(436, 437),
+//                'campus_type' => $campus_type, 
+//                'level' => 'IS NULL',
+//                'category' => (!empty($category)) ? $category : 'IS NULL',
+//                'subject' => (!empty($subject)) ? $subject : 'IS NULL',
+//                'order_by' => array('t.field_type_tr_tid', 'DESC'),
+//            );
+		
+//            if($node->type == 'aggregator_page'){
+//                $request['content_type'] = 'aggregator_page';
+//            }
+			
+//            $cert_course_nodes = get_navigation_nodes($request);
+
+//            foreach($cert_course_nodes as $index => $cert_course_node){
+			
+//                if($cert_course_node->field_type_tr["und"][0]["tid"] == 436){
+				
+//                    $cert_course_nodes[$index]->title = 'Courses';
+//                    $cert_course_nodes[$index]->is_type = 'level';
+//                    $cert_course_nodes[$index]->is_id = 6;
+					
+//                }else if($cert_course_node->field_type_tr["und"][0]["tid"] == 437){
+					
+//                    $cert_course_nodes[$index]->title = 'Certificates';
+//                    $cert_course_nodes[$index]->is_type = 'level';
+//                    $cert_course_nodes[$index]->is_id = 5;
+				
+//                }
+				
+//            }
+			
+//            $levelNodes = array_merge($levelNodes, $cert_course_nodes);
+			
+//        }
+		
+//        //Accreditation Breadbox Filters
+//        if(!empty($_GET['accred']) && check_var_exists($customFacets['accreditation'])){
+//            $breadBoxItems['accredCaption'] = "<strong>Accreditation:</strong>";
+//            $breadBoxItems['accredLink'] = build_breadbox_link($_GET['accred'], 'node/' . $node->nid, $node, array('accred'));
+//            $customFacets['accreditation'] = null;
+//        }
+		 
+//        //Credits Accepted Breadbox Filters
+//        if(!empty($_GET['credit']) && check_var_exists($customFacets['credit_accepted'])){
+//            $breadBoxItems['creditCaption'] = "<strong>Credits Accepted:</strong>";
+//            $breadBoxItems['creditLink'] = build_breadbox_link($_GET['credit'], 'node/' . $node->nid, $node, array('credit'));
+//            $customFacets['credit_accepted'] = null;
+//        }
+		
+//        //Create breadbox html to be used in the std class.
+//        if(!empty($breadBoxItems)){
+//            $breadBoxList = theme_item_list(
+//                array(
+//                    'items' => $breadBoxItems, 
+//                    'title' => '',
+//                    'type' => 'ul',
+//                    'attributes' => array('class' => 'faceted-nav-breadbox-item'),
+//                )
+//            );
+//        }
+//        else
+//            $breadBoxList = null;
+		
+//        $facetedList = new stdClass;
+//        $facetedList->node = $node;
+//        $facetedList->BreadBox = $breadBoxList;
+//        $facetedList->CampusFilter = $campusFilters;
+//        $facetedList->LevelNodes = build_facet_links($levelNodes, 'level');
+//        $facetedList->CategoryNodes = build_facet_links($categoryNodes, 'category');
+//        $facetedList->SubjectNodes = build_facet_links($subjectsNodes, 'subject');
+//        $facetedList->AccreditationFilter = build_facet_links_qs($customFacets['accreditation'], $node);
+//        $facetedList->CreditsFilter = build_facet_links_qs($customFacets['credit_accepted'], $node);
+
+//        set_eddy_listing_faceted_nav_data($facetedList);
+		
+//        // cache_set($cid, $facetedList, 'cache_eddy_faceted_nav');
+	
+//    // }
+	
+//}
+
+
+//function get_custom_facets(){
+
+//    $output = array();
+//    $output['accreditation'] = array(
+//        'title' => 'Accreditation',
+//        'name' => 'accreditation',
+//        'varname' => 'accred',
+//        'cache' => true,
+//        'meta_robots' => 'noindex,follow',
+//        'defaulturl' => 'online-degrees',
+//        'links' => array(
+//            array('link_text' => 'National', 'var' => 'National'),
+//            array('link_text' => 'Regional', 'var' => 'Regional'),
+//        ),
+//    );
+//    $output['credit_accepted'] = array(
+//        'title' => 'Credits Accepted',
+//        'name' => 'credit_accepted',
+//        'varname' => 'credit',
+//        'cache' => true,
+//        'defaulturl' => 'online-degrees',
+//        'meta_robots' => 'noindex,follow',
+//        'links' => array(
+//            array('link_text' => '1 to 30', 'var' => '1 to 30'),
+//            array('link_text' => '31 to 60', 'var' => '31 to 60'),
+//            array('link_text' => '61 or more', 'var' => '61 or more'),
+//        ),
+//    );	
+//    $output['term'] = array(
+//        'title' => 'Search Term',
+//        'name' => 'term',
+//        'varname' => 'term',
+//        'cache' => false,
+//        'meta_robots' => 'noindex,follow'
+//    );
+//    $output['page'] = array(
+//        'title' => 'Page',
+//        'name' => 'page',
+//        'varname' => 'page',
+//        'cache' => false,
+//        'meta_robots' => 'index,follow'
+//    );
+//    return $output;
+	
+//}
+
+
+
+//function get_zip_code_search_form($form_state){
+
+//    $form['#method'] = 'GET';
+	
+//    if(isset($_GET['zipcode'])){
+//        if((is_numeric($_GET['zipcode']) && strlen($_GET['zipcode']) != 5) || empty($_GET['zipcode'])){
+//            drupal_set_message('Please enter a 5 digit Zip Code.', 'error');
+//            $zipDefaultValue = '';
+//        }
+//        elseif(is_numeric($_GET['zipcode'])){
+//            $zipDefaultValue = $_GET['zipcode'];
+//        }
+//        else{
+//            drupal_set_message('Only numeric values are accepted for the Zip Code field.', 'error');
+//            $zipDefaultValue = '';
+//        }
+//    }
+//    else
+//        $zipDefaultValue = '';
+	
+//    $form['zipcode'] = array(
+//        '#type' => 'textfield',
+//        '#title' => t('Near Zip Code:'),
+//        '#size' => 5,
+//        '#maxlength' => 5,
+//        '#default_value' => $zipDefaultValue,
+//    );
+
+//    $qs = drupal_get_query_parameters($_GET, array('q', 'zipcode', 'radius', 'page'));
+	
+//    foreach($qs as $key=>$value){
+//        $form[$key] = array(
+//            '#type' => 'hidden',
+//            '#value' => $value,
+//        );
+//    }
+
+//    $form['submit'] = array(
+//        '#type' => 'submit', 
+//        '#value' => t('Change'), 
+//        '#name' => ''
+//    );
+	
+//    $form['radius_slider'] = array(
+//        '#title' => 'Radius:',
+//        '#type'	=> 'item',
+//        '#markup' => '<div id="campus-slider" class="modified-slider slider"><div style="left: 4px;" class="handle"><div class="box"></div><div class="campus-slider-counter"></div></div></div>',
+//    );
+	
+//    return $form;
+
+//}
+
+
+//function get_zip_code_search_form_horizontal($form_state){
+
+//    $form['#method'] = 'GET';
+	
+//    if(isset($_GET['zipcode'])){
+//        if((is_numeric($_GET['zipcode']) && strlen($_GET['zipcode']) != 5) || empty($_GET['zipcode'])){
+//            drupal_set_message('Please enter a 5 digit Zip Code.', 'error');
+//            $zipDefaultValue = '';
+//        }
+//        elseif(is_numeric($_GET['zipcode'])){
+//            $zipDefaultValue = $_GET['zipcode'];
+//        }
+//        else{
+//            drupal_set_message('Only numeric values are accepted for the Zip Code field.', 'error');
+//            $zipDefaultValue = '';
+//        }
+//    }
+//    else
+//        $zipDefaultValue = '';
+	
+	
+//    $form['radius_slider'] = array(
+//        '#title' => 'Radius:',
+//        '#type'	=> 'item',
+//        '#markup' => '<div id="campus-slider" class="modified-slider slider"><div style="left: 4px;" class="handle"><div class="box"></div><div class="campus-slider-counter"></div></div></div>',
+//    );
+	
+//    $form['zipcode'] = array(
+//        '#type' => 'textfield',
+//        '#title' => t('Near Zip Code:'),
+//        '#size' => 5,
+//        '#maxlength' => 5,
+//        '#default_value' => $zipDefaultValue,
+//    );
+	
+//    $qs = drupal_get_query_parameters($_GET, array('q', 'zipcode', 'radius', 'page'));
+	
+//    foreach($qs as $key=>$value){
+//        $form[$key] = array(
+//            '#type' => 'hidden',
+//            '#value' => $value,
+//        );
+//    }
+
+//    $form['submit'] = array(
+//        '#type' => 'submit', 
+//        '#value' => t('Change'), 
+//        '#name' => ''
+//    );
+	
+//    return $form;
+
+//}
+
+
+
+
+
+///**
+// * Get Cached Version of the Level nodes.
+// */
+//function get_cached_level_nodes($type, $campus_type = 'IS NULL'){
+
+//  $results = &drupal_static(__FUNCTION__);
+//  if (!isset($results)) {
+//    $results = "";
+	
+//    $cid = "facet_levels_$type_$campus_type";
+//    if ($cache = cache_get($cid)) {
+//        $results = $cache->data;
+//    }
+//    else {
+//        $results = get_navigation_nodes(array('type' => $type, 'campus_type' => $campus_type, 'level' => 'IS NOT NULL'));
+//        cache_set($cid, $results, 'cache_eddy_faceted_nav');
+//    }
+	
+//  }
+  
+//  return $results;
+  
+//}
+
+///**
+// * Returns a breadbox link.
+// */
+//function build_breadbox_link($title, $path, $node, $exclude = array()){
+
+//    //$exclude = explode(',',$exclude);
+//    $exclude = array_merge($exclude, array('q', 'page'));
+	
+//    $output = "<span class=\"bread-box-remove-title\">$title</span>" . l(
+//        $text = "<span class=\"bread-box-remove-box\"></span>", 
+//        $path = $path, 
+//        $options = array(
+//            'attributes' => array(
+//                'title' => "Remove: ".$title
+//            ),
+//            'html' => TRUE,
+//            'path' => 'node/' . $node->nid,
+//            //'query' => drupal_get_query_parameters($_GET, $exclude),
+//        )
+//    );
+//    return $output;
+//}
+
+
+///**
+// * Helper function to build an html list for each array of nodes
+// */
+//function build_facet_links($nodes, $is_type = 'none'){
+//    if($nodes != null){
+//        $items = array();
+//        foreach ($nodes as $node){
+//            if($node != null){
+//                $items[] = array(
+//                    'data' => l(
+//                        $text = $node->title,
+//                        $path = 'node/' . $node->nid, 
+//                        $options = array(
+//                            'attributes' => array('title' => $node->title),
+//                            'path' => 'node/' . $node->nid,
+//                            //'query' => drupal_get_query_parameters($_GET, array('q', 'page')),
+//                        )
+//                    ),
+//                    'data-is-id' => $node->is_id,
+//                );
+//            }
+//        }
+//        return theme_item_list(
+//            array(
+//                'items' => $items, 
+//                'title' => '',
+//                'type' => 'ul',
+//                'attributes' => array('class' => "faceted-nav-list faceted-nav-$is_type"),
+//            )
+//        );
+//    }
+//}
+
+
+///**
+// * Returns html list of links that use query string params.
+// */
+//function build_facet_links_qs($data, $node){
+//    if($data != null){
+//        if(!empty($data['links'])){
+			
+//            foreach ($data['links'] as $item){
+//                $items[] = l(
+//                    $text = $item['link_text'],
+//                    $path = 'node/' . $node->nid, 
+//                    $options = array (
+//                        'attributes' => array('title' => $item['link_text']),
+//                        'path' => 'node/' . $node->nid,
+//                        //'query' => array_merge(drupal_get_query_parameters(), array($data['varname'] => $item['var'])),
+//                    )
+//                );
+//            }
+//        }
+
+//        return theme_item_list(
+//            array(
+//                'items' => $items, 
+//                'title' => '',
+//                'type' => 'ul',
+//                'attributes' => array('class' => 'faceted-nav-list'),
+//            )
+//        );
+//    }
+//}
+
+
+///**
+// * Returns the nodes for a navigation group.
+// */
+//function get_navigation_nodes($params){
+
+//    //Creating Defaults
+//    $params += array(
+//        'type' => "IS NULL",
+//        'campus_type' => "IS NULL",
+//        'level' => "IS NULL",
+//        'category' => "IS NULL",
+//        'subject' => "IS NULL",
+//        'results_count' => 0,
+//        'content_type' => 'product_list',
+//        'request_bundle' => '',
+//        'order_by' => array('n.title', 'ASC'),
+//    );
+	
+//    $type = $params['type'];
+//    $campus_type = $params['campus_type'];
+//    $level = $params['level'];
+//    $category = $params['category'];
+//    $subject = $params['subject'];
+//    $results = $params['results_count'];
+//    $contentType = $params['content_type'];
+
+	
+//    $q = db_select('node', 'n');
+//    $q->fields('n', array('nid'));
+//    $q->condition('status', 1,'=');
+//    $q->condition('type', $contentType,'=');
+//    //$q->leftJoin('field_data_field_type_tr', 't', 'n.nid = t.entity_id AND (t.entity_type = \'node\' AND t.deleted = \'0\')');
+//    //$q->leftJoin('field_data_field_campus_type_tr', 'ct', 'n.nid = ct.entity_id AND (ct.entity_type = \'node\' AND ct.deleted = \'0\')');
+//    $q->leftJoin('field_data_field_level_tr', 'l', 'n.nid = l.entity_id AND (l.entity_type = \'node\' AND l.deleted = \'0\')');
+//    $q->leftJoin('field_data_field_category_tr', 'c', 'n.nid = c.entity_id AND (c.entity_type = \'node\' AND c.deleted = \'0\')');
+//    $q->leftJoin('field_data_field_subject_tr', 's', 'n.nid = s.entity_id AND (s.entity_type = \'node\' AND s.deleted = \'0\')');
+	
+//    $data = array(
+//        // "type" => array(
+//            // "field" => "t.field_type_tr_tid",
+//            // "value" => $type,
+//        // ),
+//        // "campus_type" => array(
+//            // "field" => "ct.field_campus_type_tr_tid",
+//            // "value" => $campus_type,
+//        // ),
+//        "level" => array(
+//            "field" => "l.field_level_tr_tid",
+//            "value" => $level,
+//        ),
+//        "category" => array(
+//            "field" => "c.field_category_tr_tid",
+//            "value" => $category,
+//        ),
+//        "subject" => array(
+//            "field" => "s.field_subject_tr_tid",
+//            "value" => $subject,
+//        ),
+//    );
+//    foreach($data as $item){
+//        if(is_numeric($item["value"])){
+//            $q->condition($item["field"], $item["value"],'=');
+//        }
+//        else if(is_array($item["value"])){
+//            $q->condition($item["field"], $item["value"], 'in');
+//        }
+//        else{
+//            if($item["value"] == "IS NOT NULL")
+//                $q->isNotNull($item["field"]);
+//            else if($item["value"] == "IS NULL")
+//                $q->isNull($item["field"]);
+//        }
+//    }
+//    //$q->orderBy('n.title', 'ASC');
+	
+//    $q->orderBy($params['order_by'][0], $params['order_by'][1]);
+	
+//    if($results > 0)
+//        $q->range(0, $results);
+	
+//    $nids = $q->execute()->fetchCol();
+		
+//    $nodes = entity_load('node', $nids);
+	
+//    $options = array(
+//        'type' => $type,
+//        'campus_type' => $campus_type,
+//        'level' => $level,
+//        'category' => $category,
+//        'subject' => $subject,
+//    );
+	
+//    if($level == 'IS NOT NULL'){
+	
+//        $nodes = merge_nodes_with_service_results($nodes, $options, 'levels');
+		
+//        //Move Doctorate to the last item in the list. This needs to be revisited if more levels are added.
+//        if(variable_get('eddy_core_application_id') == 2 && count($nodes) > 1){
+//            foreach($nodes as $nodeKey => $nodeValue){
+
+//                $levelTermName = taxonomy_term_load($nodeValue->field_level_tr['und'][0]['tid']);
+				
+//                if($levelTermName->name == 'Doctorate'){
+//                    $doctorateNode = array($nodeValue);
+//                    unset($nodes[$nodeKey]);
+//                }
+		
+//            }
+			
+//            if(!empty($doctorateNode))
+//                $nodes = array_merge($nodes, $doctorateNode);
+				
+//        }
+			
+//    }
+	
+//    else if($category == 'IS NOT NULL'){
+//        $nodes = merge_nodes_with_service_results($nodes, $options, 'categories');
+//    }
+	
+//    else if($subject == 'IS NOT NULL'){
+//        $nodes = merge_nodes_with_service_results($nodes, $options, 'subjects');
+//    }
+	
+//    return $nodes;
+		
+//}
+
+///**
+// * Returns the nodes for a navigation group.
+// */
+//function get_navigation_nodes_no_matching($params){
+
+//    //Creating Defaults
+//    $params += array(
+//        'type' => "IS NULL",
+//        'campus_type' => "IS NULL",
+//        'level' => "IS NULL",
+//        'category' => "IS NULL",
+//        'subject' => "IS NULL",
+//        'results_count' => 0,
+//        'content_type' => 'product_list',
+//        'request_bundle' => '',
+//    );
+	
+//    $type = $params['type'];
+//    $campus_type = $params['campus_type'];
+//    $level = $params['level'];
+//    $category = $params['category'];
+//    $subject = $params['subject'];
+//    $results = $params['results_count'];
+//    $contentType = $params['content_type'];
+
+//    $q = db_select('node', 'n');
+//    $q->fields('n', array('nid'));
+//    $q->condition('status', 1,'=');
+//    $q->condition('type', $contentType,'=');
+//    //$q->leftJoin('field_data_field_type_tr', 't', 'n.nid = t.entity_id AND (t.entity_type = \'node\' AND t.deleted = \'0\')');
+//    //$q->leftJoin('field_data_field_campus_type_tr', 'ct', 'n.nid = ct.entity_id AND (ct.entity_type = \'node\' AND ct.deleted = \'0\')');
+//    $q->leftJoin('field_data_field_level_tr', 'l', 'n.nid = l.entity_id AND (l.entity_type = \'node\' AND l.deleted = \'0\')');
+//    $q->leftJoin('field_data_field_category_tr', 'c', 'n.nid = c.entity_id AND (c.entity_type = \'node\' AND c.deleted = \'0\')');
+//    $q->leftJoin('field_data_field_subject_tr', 's', 'n.nid = s.entity_id AND (s.entity_type = \'node\' AND s.deleted = \'0\')');
+	
+//    $data = array(
+//        // "type" => array(
+//            // "field" => "t.field_type_tr_tid",
+//            // "value" => $type,
+//        // ),
+//        // "campus_type" => array(
+//            // "field" => "ct.field_campus_type_tr_tid",
+//            // "value" => $campus_type,
+//        // ),
+//        "level" => array(
+//            "field" => "l.field_level_tr_tid",
+//            "value" => $level,
+//        ),
+//        "category" => array(
+//            "field" => "c.field_category_tr_tid",
+//            "value" => $category,
+//        ),
+//        "subject" => array(
+//            "field" => "s.field_subject_tr_tid",
+//            "value" => $subject,
+//        ),
+//    );
+//    foreach($data as $item){
+		
+//        if(is_numeric($item["value"])){
+//            $q->condition($item["field"], $item["value"], '=');
+//        }
+//        else if(is_array($item["value"])){
+//            $q->condition($item["field"], $item["value"], 'in');
+//        }
+//        else{
+//            if($item["value"] == "IS NOT NULL")
+//                $q->isNotNull($item["field"]);
+//            else if($item["value"] == "IS NULL")
+//                $q->isNull($item["field"]);
+//        }
+		
+//    }
+//    $q->orderBy('n.title', 'ASC');
+	
+//    if($results > 0)
+//        $q->range(0, $results);
+	
+//    $nids = $q->execute()->fetchCol();
+		
+//    $nodes = node_load_multiple($nids);
+	
+//    return $nodes;
+		
+//}
+
+
+//function merge_nodes_with_service_results($nodes, $options, $bundle){
+
+//    $options += array(
+//      //'type' => 0,
+//      //'campus_type' => 0,
+//      'level' => 0,
+//      'category' => 0,
+//      'subject' => 0,
+//    );
+	
+//    $params = array();
+//    //$params['type'] = get_external_id_from_term($options['type']);
+
+//    //$params['campus_type'] = get_external_id_from_term($options['campus_type']);
+
+//    $params['level'] = get_external_id_from_term($options['level']);
+//    $params['category'] = get_external_id_from_term($options['category']);
+//    $params['subject'] = get_external_id_from_term($options['subject']);
+	
+//    switch($bundle){
+//        case 'levels':
+//            $ids = get_level_ids($params);
+			
+//            $tids = get_facet_nav_term_ids($ids, $bundle);
+
+//            foreach($nodes as $key => $value){
+				
+//                if(!in_array($value->field_level_tr['und'][0]['tid'], array_keys($tids)))
+//                    unset($nodes[$key]);
+					
+//                $nodes[$key]->is_type = $bundle;
+//                $nodes[$key]->is_id = $tids[$value->field_level_tr['und'][0]['tid']]->is_id;
+				
+//            }
+			
+//        break;
+//        case 'categories':
+//            $ids = get_category_ids($params);
+			
+//            $tids = get_facet_nav_term_ids($ids, $bundle);
+			
+//            foreach($nodes as $key => $value){
+			
+//                if(!in_array($value->field_category_tr['und'][0]['tid'], array_keys($tids)))
+//                    unset($nodes[$key]);
+					
+//                $nodes[$key]->is_type = $bundle;
+//                $nodes[$key]->is_id = $tids[$value->field_category_tr['und'][0]['tid']]->is_id;
+			
+//            }
+			
+//        break;
+//        case 'subjects':
+//            $ids = get_subject_ids($params);
+			
+//            $tids = get_facet_nav_term_ids($ids, $bundle);
+			
+//            foreach($nodes as $key => $value){
+//                if(!in_array($value->field_subject_tr['und'][0]['tid'], array_keys($tids)))
+//                    unset($nodes[$key]);
+					
+//                $nodes[$key]->is_type = $bundle;
+//                $nodes[$key]->is_id = $tids[$value->field_subject_tr['und'][0]['tid']]->is_id;
+				
+//            }
+			
+//        break;
+//    }
+	
+//    return $nodes;
+//}
+
+
+//function get_level_ids($params){
+	
+//    $output = array(0);
+	
+//    if($serviceResults = eddy_services_get_listings($params, "GetProgramLevels")){
+	
+//        $results = $serviceResults->GetProgramLevelsResult->ProgramLevelList;
+
+//        foreach($results as $key => $value){
+//            $output[] = $results[$key]->ProgramLevelId;
+//        }
+//    }
+	
+//    return $output;
+	
+//}
+
+
+//function get_category_ids($params){
+	
+//    $output = array(0);
+
+//    if($serviceResults = eddy_services_get_listings($params, "GetCategories")){
+		
+//        $results = $serviceResults->GetCategoriesResult->CategoryList;
+		
+//        foreach($results as $key => $value){
+//            $output[] = $results[$key]->CategoryId;
+//        }
+	
+//    }
+	
+//    return $output;
+//}
+
+
+//function get_subject_ids($params){
+	
+//    $output = array(0);
+
+//    if($serviceResults = eddy_services_get_listings($params, "GetSubjects")){
+		
+//        $results = $serviceResults->GetSubjectsResult->SubjectList;
+
+//        foreach($results as $key => $value){
+//            $output[] = $results[$key]->SubjectId;
+//        }
+	
+//    }
+	
+//    return $output;
+	
+//}
+
+///**
+// * Get Faceted Search Term
+// */
+//function get_facet_nav_term_ids($ids = array(), $bundle) {
+	
+//    $output = array();
+//    $query = new EntityFieldQuery();
+//    $query = $query
+//        ->entityCondition('entity_type', 'taxonomy_term')
+//        ->entityCondition('bundle', $bundle)
+//        ->fieldCondition('field_external_id', 'value', $ids)
+//        ->execute();
+	
+//    if (isset($query['taxonomy_term'])) {
+	
+//        $tids = array_keys($query['taxonomy_term']);
+		
+//        $results = entity_load('taxonomy_term', $tids);
+		
+//        foreach($results as $key => $value){
+//            $output[$key] = $value;
+//            $output[$key]->is_id = $results[$key]->field_external_id['und'][0]['value'];
+//        }
+
+//    }
+	
+//    return $output;
+						
+//}
+
+
+//function get_external_id_from_term($tid){
+	
+//    $output = array();
+	
+//    if($term = taxonomy_term_load($tid))
+//        $output = array($term->field_external_id['und'][0]['value']);
+			
+//    return $output;
+	
+//}
+
+
+////Returns True or False for pages that have listings
+//function is_facet_node($node){
+//    if($node->type == "product_list" || 
+//    ($node->type == "aggregator_page" && !empty($node->field_type_tr))
+//    ){
+//        return true;
+//    }else{
+//        return false;
+//    }
+//}
+
+////Clears Cache from the 'cache_eddy_faceted_nav' cache table.
+//function eddy_listing_faceted_nav_node_update($node){
+//    if(is_facet_node($node)){
+//        cache_clear_all('facet_', 'cache_eddy_faceted_nav', TRUE);
+//    }
+//}
+
+//function eddy_listing_faceted_nav_node_insert($node){
+//    if(is_facet_node($node)){
+//        cache_clear_all('facet_', 'cache_eddy_faceted_nav', TRUE);
+//    }
+//}
+
+//function eddy_listing_faceted_nav_node_delete($node){
+//    if(is_facet_node($node)){
+//        cache_clear_all('facet_', 'cache_eddy_faceted_nav', TRUE);
+//    }	
+//}
+
+//function eddy_listing_faceted_nav_flush_caches() {
+//    cache_clear_all('facet_', 'cache_eddy_faceted_nav', TRUE);
+//}

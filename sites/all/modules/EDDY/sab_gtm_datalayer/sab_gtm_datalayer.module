@@ -1,0 +1,93 @@
+<?php
+
+/**
+ * Implements hook_page_alter().
+ */
+function sab_gtm_datalayer_page_alter($page){
+
+    $product_list = get_sab_product_list_current_product_list();
+
+    if(!empty($product_list)){
+ 
+        _sab_gtm_datalayer_set_product_list_datalayer($product_list);  
+
+    }
+
+    $program_details = get_sab_program_details();
+
+    if(isset($program_details->programDetails)){
+    
+        _sab_gtm_datalayer_set_program_details_datalayer($program_details->programDetails);
+
+    }
+
+}
+
+
+/**
+ * Implements hook_product_list_view_alter().
+ */
+function sab_gtm_datalayer_product_list_view_alter($product_list){
+
+    _sab_gtm_datalayer_set_product_list_datalayer($product_list);
+
+}
+
+
+function _sab_gtm_datalayer_set_product_list_datalayer($product_list){
+    
+    $d = array("page_type" => "Listing");
+
+    foreach($product_list->relationships_terms as $v){
+
+        $key = $v->vocabulary_machine_name;
+
+        $key = str_replace("ies", "y", $key);
+        $key = rtrim($key, 's');
+
+        $d[$key] = $v->name;
+        
+    }
+    
+    $e = array(
+        "#tag" => "script",
+        "#attributes" => array (
+            "type" => "text/javascript",
+        ),
+        "#value" => 'dataLayer=[' . json_encode($d) . '];',
+    );
+    
+    drupal_add_html_head($e, 'google_datalayer');
+
+}
+
+function _sab_gtm_datalayer_set_program_details_datalayer($program_details){
+
+    $d = array("page_type" => "Program Detail");
+
+    $program_type = get_sab_program_details_program_type_term($program_details->ProgramTypeId);
+
+    if(isset($program_type->name)){
+        $d["program_type"] = $program_type->name;
+    }
+    if(isset($program_details->ProgramLevelName)){
+        $d["level"] = $program_details->ProgramLevelName;
+    }
+    if(isset($program_details->InstitutionName)){
+        $d["institution_name"] = $program_details->InstitutionName;
+    }
+    if(isset($program_details->ProgramName)){
+        $d["program_name"] = $program_details->ProgramName;
+    }
+
+    $e = array(
+        "#tag" => "script",
+        "#attributes" => array (
+            "type" => "text/javascript",
+        ),
+        "#value" => 'dataLayer=[' . json_encode($d) . '];',
+    );
+    
+    drupal_add_html_head($e, 'google_datalayer');
+
+}

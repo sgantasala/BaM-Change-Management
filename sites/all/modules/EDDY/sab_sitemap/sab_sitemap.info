@@ -1,0 +1,8 @@
+name = SAB Sitemap
+description = Contains all xml sitemap features for the SAB site.
+core = 7.x
+package = Eddy Core Business
+version = "7.x-1.0"
+
+dependencies[] = eddy_services
+dependencies[] = sab_listing

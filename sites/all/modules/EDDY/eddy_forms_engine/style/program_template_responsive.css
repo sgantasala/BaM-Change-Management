@@ -1,0 +1,843 @@
+﻿body.responsive{
+	overflow-x:hidden;
+}
+
+#page-holder{
+    width:100%;
+    max-width:960px;
+}
+
+#ResponsiveWidth
+{
+    width:100%;    
+}
+
+/* overwrite drupal container */
+#header,
+#column-narrow,
+#page-holder{
+	border:0;
+	background:none;
+}
+.right-inc-wrapper-outer{
+	background:#C2C2C2;
+}
+.right-inc-wrapper-inner{
+	background:#E6E6E6;
+}
+
+
+#responsive-toggle-details-holder
+{
+    text-align:center;
+    width: 100%;
+    min-width:220px;
+    display: table;
+}
+
+
+
+.responsive-view-program-info, .responsive-view-form
+{
+    display:table-cell;
+    vertical-align:middle;
+    text-align:center;
+    width:50%;
+    font-family:Georgia;
+    font-size:18px;
+    text-decoration:none;
+    color:#fff;
+    padding:6px 0;
+    border-top:1px solid #D5D5D5; 
+    font-style:italic;
+    font-weight:bold;
+}
+
+
+
+.responsive-view-program-info
+{
+    background: #efefef; /* Old browsers */
+    background: -moz-linear-gradient(top,  #efefef 1%, #e5e5e5 51%, #dcdcdc 100%); /* FF3.6+ */
+    background: -webkit-gradient(linear, left top, left bottom, color-stop(1%,#efefef), color-stop(51%,#e5e5e5), color-stop(100%,#dcdcdc)); /* Chrome,Safari4+ */
+    background: -webkit-linear-gradient(top,  #efefef 1%,#e5e5e5 51%,#dcdcdc 100%); /* Chrome10+,Safari5.1+ */
+    background: -o-linear-gradient(top,  #efefef 1%,#e5e5e5 51%,#dcdcdc 100%); /* Opera 11.10+ */
+    background: -ms-linear-gradient(top,  #efefef 1%,#e5e5e5 51%,#dcdcdc 100%); /* IE10+ */
+    background: linear-gradient(to bottom,  #efefef 1%,#e5e5e5 51%,#dcdcdc 100%); /* W3C */
+    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#efefef', endColorstr='#dcdcdc',GradientType=0 ); /* IE6-9 */
+    color: #005EA0;
+}
+
+    .responsive-view-program-info.active, .responsive-view-form.active
+    {
+        background: #0569a6; /* Old browsers */
+        background: -moz-linear-gradient(top,  #0569a6 0%, #0569a6 51%, #0569a6 99%); /* FF3.6+ */
+        background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#0569a6), color-stop(51%,#0569a6), color-stop(99%,#0569a6)); /* Chrome,Safari4+ */
+        background: -webkit-linear-gradient(top,  #0569a6 0%,#0569a6 51%,#0569a6 99%); /* Chrome10+,Safari5.1+ */
+        background: -o-linear-gradient(top,  #0569a6 0%,#0569a6 51%,#0569a6 99%); /* Opera 11.10+ */
+        background: -ms-linear-gradient(top,  #0569a6 0%,#0569a6 51%,#0569a6 99%); /* IE10+ */
+        background: linear-gradient(to bottom,  #0569a6 0%,#0569a6 51%,#0569a6 99%); /* W3C */
+        filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#0569a6', endColorstr='#0569a6',GradientType=0 ); /* IE6-9 */
+        color:#fff;
+    }
+
+.responsive-view-form
+{
+    background: #ff6400; /* Old browsers */
+    background: -moz-linear-gradient(top,  #ff6400 0%, #ff7f00 51%, #ff9200 100%); /* FF3.6+ */
+    background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#ff6400), color-stop(51%,#ff7f00), color-stop(100%,#ff9200)); /* Chrome,Safari4+ */
+    background: -webkit-linear-gradient(top,  #ff6400 0%,#ff7f00 51%,#ff9200 100%); /* Chrome10+,Safari5.1+ */
+    background: -o-linear-gradient(top,  #ff6400 0%,#ff7f00 51%,#ff9200 100%); /* Opera 11.10+ */
+    background: -ms-linear-gradient(top,  #ff6400 0%,#ff7f00 51%,#ff9200 100%); /* IE10+ */
+    background: linear-gradient(to bottom,  #ff6400 0%,#ff7f00 51%,#ff9200 100%); /* W3C */
+    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ff6400', endColorstr='#ff9200',GradientType=0 ); /* IE6-9 */
+}
+
+#responsive-school-info
+{
+    margin:auto;
+    text-align:center;
+    display:table;
+}
+
+    #responsive-school-info .logo-holder, #responsive-school-info .school-info-holder
+    {
+        display:table-cell;
+        text-align:center;
+        vertical-align:middle;
+        padding:0 1%;
+    }
+
+
+#UserSelections .crosssell-school{
+    margin:auto 5px auto 28px;
+}
+#UserSelections .program-info{
+    display:inline-block;
+    width:23%;
+    margin-right:1%;
+    vertical-align:top;
+}
+#UserSelections .school-logo{
+    box-shadow:none;
+    height:auto;
+    left:auto;
+    position:initial;
+    top:auto;
+    width:auto;
+}
+#UserSelections .school-name,
+#UserSelections .program-name{
+    font-size:1.2em;
+}
+ 
+/* hides these items when the user is on the Cross Sell Screen */
+.cross-sell-page #responsive-school-info, .cross-sell-page #responsive-toggle-details-holder
+{
+    display:none;
+}
+
+@media all and (min-width:981px) {
+     #ResponsiveWidth
+    {
+        width:981px;
+    }
+}
+
+@media all and (max-width: 980px)
+{
+
+    .responsive.page-form #header, 
+    .responsive.page-form #page-holder, 
+    .responsive.page-form #footer
+    {
+        width:100%;
+    }
+
+    .responsive.page-form #page-holder {
+        border-left: none;
+        border-right: none;
+    }
+ 
+        .responsive.page-form #header
+        {
+            margin:0;
+            padding:0;
+        }
+
+        .responsive.page-form #header .logo-holder
+        {
+            margin:0;
+            padding:0;
+        }
+
+
+    .responsive.page-form #column-wide, 
+    .responsive.page-form #column-narrow
+    {
+        display: table-cell;
+        vertical-align: top;
+    }
+
+    .responsive.thankyou #column-wide, 
+    .responsive.thankyou #column-narrow{
+        display:block;
+    }
+    
+    .responsive.page-form #column-wide
+    {
+        width:70%;
+    }
+    .responsive.page-form-thank-you #column-wide
+    {
+        width:100%;
+    }
+
+    .responsive.page-form #column-narrow{
+        margin-bottom: 0;
+        padding-bottom: 0;
+        padding-right:10px;
+    }
+
+    .responsive.cross-sell-page.form #page-holder
+    {
+        width:auto;
+    }
+
+}
+
+@media all and (max-width: 960px) and (min-width: 901px){
+    @viewport {
+        width: 901px;
+    }
+    #ResponsiveWidth
+    {
+        width:901px;
+    }
+    
+}
+
+@media all and (max-width: 900px) and (min-width: 769px){
+    @viewport {
+        width: 769px;
+    }
+    #ResponsiveWidth
+    {
+        width:769px;
+    }
+    .responsive.page-form #column-wide
+    {
+        width:65%;
+    }
+    .responsive.page-form-thank-you #column-wide
+    {
+        width:100%;
+    }
+}
+
+/*@media all and (max-width: 768px) and (min-width: 641px){
+    
+    @viewport {
+        width: 641px;
+    }
+    #ResponsiveWidth{
+        width:641px;
+    }
+	
+	.responsive.page-form #column-wide
+    {
+        width:60%;
+    }
+}
+@media all and (max-width: 680px) and (min-width: 641px){
+    .responsive.page-form #column-wide
+    {
+        width:57%;
+    }
+}*/
+@media all and (max-width: 768px)
+{
+    .responsive.page-form #column-wide{
+        width:100%;
+        float:none;
+    }
+    .responsive.page-form #column-narrow,
+	.responsive.cross-sell-page #column-narrow{
+		display:none;
+	}
+	
+	.responsive.cross-sell-page #column-wide{
+		width:100%;
+	}
+	.responsive.cross-sell-page #eddy-form-container{
+			background:none;
+			box-shadow:none;
+			border:0;
+	}
+
+    #header .logo-holder{
+        position:relative;
+        float:none;
+    }
+
+     #header .back-to-home-link {
+        position:absolute;
+        bottom:0;
+        right:10px;
+        top:40%;
+    }
+     /* Form Styles */
+    .form #column-wide #school-name, .form #column-narrow .school-logo, .form #column-narrow .right-inc-fact, .form #column-narrow .right-inc-what-you-need
+    {
+        display:none;
+    }
+
+    #column-narrow
+    {
+        width: 100%;
+        background:#F2F2F2;
+        display:block;
+        padding-top:10px;
+    }
+
+    .form .right-inc-wrapper-outer, .form .right-inc-wrapper-inner
+    {
+        border:0;
+        background:none;
+    }
+
+    .form .right-inc-wrapper-outer
+    {
+        padding:0;
+        margin:0;
+    }
+
+
+
+}
+
+
+
+@media all and (max-width: 640px) and (min-width: 481px) {
+
+    @viewport {
+        width: 481px;
+    }
+    #ResponsiveWidth
+    {
+        width:481px;
+    }
+
+}
+@media all and (max-width: 480px) {
+
+    #UserSelections .program-info{
+        margin-right:0;
+        width:auto;
+    }
+    #UserSelections .school-name,
+    #UserSelections .program-name {
+        display:none;
+    }
+
+    #UserSelections .school-logo img{
+        border:1px solid #888;
+        width:100px;
+        height:auto;
+    }
+}
+
+@media all and (max-width: 480px) and (min-width: 341px) {
+
+    #ResponsiveWidth
+    {
+        width:341px;
+    }
+
+    .page-form #footer
+    {
+        width:100%;
+    }
+
+}
+
+@media all and (max-width: 400px){
+    
+    #UserSelections .program-info{
+        margin-right:2%;
+        width:45%;
+
+    }
+    #UserSelections .school-logo img{
+        width:auto;
+    }
+}
+
+@media all and (max-width: 340px)
+{
+
+
+    #ResponsiveWidth
+    {
+        width:1px;
+    }
+
+    #responsive-school-info
+    {
+        margin:auto;
+        display:block;
+    }
+
+    #responsive-school-info .logo-holder, #responsive-school-info .school-info-holder
+    {
+        display:block;
+        padding:2% 0 4% 0;
+    }
+
+    .responsive-view-program-info, .responsive-view-form
+    {
+        font-size:12px;
+    }
+
+}
+
+@media all and (max-width: 250px)
+{
+    .responsive-view-program-info, .responsive-view-form
+    {
+        font-size:10px;
+    }
+}
+
+
+
+
+/*********clicksnet *************/
+
+
+
+#clicksnet-ads #fcAdBlock {
+	
+	margin-bottom: 50px;
+	margin-top:20px;
+}
+#clicksnet-ads #fcAdBlock *{
+	margin:auto;
+}
+#clicksnet-ads #fcAdBlock #pnlHeader > div{
+    width:auto !important;
+}
+#clicksnet-ads #fcAdBlock #pnlHeader > div > h3{
+    font-style:normal;
+    font-weight:bold;
+    margin:0 0 0 10px;
+    text-align:left;
+    color:#666;
+}
+#clicksnet-ads #clicksnet_fc_listingResults .clearfix {
+  *zoom: 1;
+}
+
+#clicksnet-ads #clicksnet_fc_listingResults .clearfix:before,
+#clicksnet-ads #clicksnet_fc_listingResults .clearfix:after {
+  display: table;
+  line-height: 0;
+  content: "";
+}
+
+#clicksnet-ads #clicksnet_fc_listingResults .clearfix:after {
+  clear: both;
+}
+
+#clicksnet-ads #main-wrapper #pnlFooter {
+    width: 100%;
+	margin-top: 50px;
+}
+
+#clicksnet-ads #main-wrapper #fcAdBlock > div {
+    margin:auto;
+	float:none;
+	clear:both;
+}
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box{
+    background: none repeat scroll 0 0 #FFFFFF;
+    border-radius: 10px;
+    box-shadow: 0 0 4px #888888;
+    margin: 10px auto;
+    padding: 15px 3%;
+    position: relative;
+    width: 70%;
+    border: 1px solid #CDCDCD;
+    background-color : #fff;
+	
+}
+
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_title_row .clicksnet_fc_title
+{
+    color: #0298D7;
+    font: 22px arial;
+    padding: 0 50px 10px 0;
+    width: auto;
+}
+
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_title_row{
+    border-bottom: 0;
+}
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_text_box ul
+{
+    border-left: 1px solid #E7E7E7;
+    border-right: 1px solid #E7E7E7;
+    list-style: none;
+    margin-right: 5%;
+    padding-left: 5%;
+    padding-right: 10%;
+    width: 80%;
+	margin-bottom:1em;
+}
+
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_logo_box
+{
+	border: 0;
+}
+
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_more_programs {
+	display: none;
+}
+#clicksnet-ads .clicksnet_go_btn
+        {
+            display:none;
+			float:right;
+			vertical-align:top;
+        }
+		
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fcButton
+{
+    background-image: url("../images/more_info_orange.png");
+    float: left;
+    width: 145px;
+    max-height: 100%;
+    max-width: 100%;
+    width : 100%;
+	border:0;
+}		
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_right_box {
+    height: 40px; 
+}
+
+
+/* two-columns */
+#clicksnet-ads #clicksnet_fc_listingResults.two-columns [id*="adPanel"] {
+    display:inline-block;
+    width: 49.5%;
+	vertical-align:top;
+}
+#clicksnet-ads #clicksnet_fc_listingResults.two-columns {
+	width: 100%;
+	max-width:980px;
+	margin:auto;
+}
+
+#clicksnet-ads #clicksnet_fc_listingResults.two-columns .clicksnet_fc_list_box .clicksnet_fc_text_box {
+	width: 65%;
+	padding: 0;
+}
+#clicksnet-ads #clicksnet_fc_listingResults.two-columns .clicksnet_fc_list_box .clicksnet_fc_right_box {
+	width: 137px;
+}
+#clicksnet-ads #clicksnet_fc_listingResults.two-columns .clicksnet_fc_list_box {
+	width: 90%;
+	min-height:300px;
+}
+#clicksnet-ads #clicksnet_fc_listingResults.two-columns .clicksnet_fc_list_box .clicksnet_fc_text_box ul {
+	margin: 0 0 0 6%; 
+	padding:0;
+	width:auto;
+	border:0;
+}
+
+#clicksnet-ads #clicksnet_fc_listingResults.two-columns .clicksnet_fc_list_box .clicksnet_fc_title_row .clicksnet_fc_title{
+
+	padding:0;
+	margin-left:5px;
+}
+
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_logo_box .clicksnet_fc_phone{
+	font-size:14px;
+	font-weight:bold;
+	float:none;
+	text-align:center;
+	padding:0;
+}
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_logo_box img{
+    border:0;
+}
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_box1,
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_box1:hover{
+	background:url("../images/blue-bg1.png") no-repeat #FFF !important;
+}
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_box2,
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_box2:hover{
+	background:url("../images/blue-bg2.png") no-repeat #FFF !important;
+}
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_box3,
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_box3:hover{
+	background:url("../images/blue-bg3.png") no-repeat #FFF !important;
+}
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_box4,
+.responsive #page #clicksnet_fc_listingResults .clicksnet_box4:hover{
+	background:url("../images/blue-bg4.png") no-repeat #FFF !important;
+}
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_box5,
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_box5:hover{
+	background:url("../images/blue-bg5.png") no-repeat #FFF !important;
+}
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_box6,
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_box6:hover{
+	background:url("../images/blue-bg6.png") no-repeat #FFF !important;
+}
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_box7,
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_box7:hover{
+	background:url("../images/blue-bg7.png") no-repeat #FFF !important;
+}
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_box8,
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_box8:hover{
+	background:url("../images/blue-bg8.png") no-repeat #FFF !important;
+}
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_box9,
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_box9:hover{
+	background:url("../images/blue-bg9.png") no-repeat #FFF !important;
+}
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_box10,
+#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_box10:hover{
+	background:url("../images/blue-bg10.png") no-repeat #FFF !important;
+}
+
+
+
+
+
+@media all and (max-width: 960px){
+
+	#clicksnet-ads #clicksnet_fc_listingResults.two-columns .clicksnet_fc_list_box .clicksnet_fc_text_box{
+		width:58%;
+	}
+
+
+}
+
+@media all and (max-width: 900px){
+	#clicksnet-ads #pnlHeader > div{
+		width:96% !important;
+		text-align:left;
+	}
+	#clicksnet-ads #clicksnet_fc_listingResults.two-columns .clicksnet_fc_list_box .clicksnet_fc_logo_box{
+		float:left;
+		margin-bottom:10px;
+		display:inline-block;
+		vertical-align:top;
+		margin-right:0;
+	}
+	
+	#clicksnet-ads #clicksnet_fc_listingResults.two-columns .clicksnet_fc_list_box .clicksnet_fc_right_box{
+		width:147px;
+		margin-top:.6em;
+	}
+	
+	#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_title_row .clicksnet_fc_title,
+	#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_text_box ul{
+		border:0;
+	}
+	
+
+}
+
+@media all and (max-width: 768px){
+    #clicksnet-ads #fcAdBlock{
+		margin:0;
+	}
+    #clicksnet-ads #clicksnet_fc_listingResults.two-columns .clicksnet_fc_list_box .clicksnet_fc_text_box{
+		width:65%;
+	}
+	#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_title_row .clicksnet_fc_title{
+		font-size:80%;
+	}
+	#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_logo_box{
+		width:20%;
+		text-align:left;
+		padding:0;
+	}
+	#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_logo_box img{
+		width:87px;
+		height:42px;
+	}
+
+	#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_text_box{
+		width:51%;
+	}
+	
+}
+
+
+
+@media all and (max-width: 768px) and (min-width: 641px) {
+
+    #clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_title_row{
+        margin-left:15px;
+    }
+    #clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_title_row .clicksnet_fc_title{
+		font-size:70%;
+        float:left;
+        display:inline-block;
+        width:65%;
+	}
+    
+    
+    #clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_logo_box{
+		text-align:left;
+		padding:0;
+        height:auto;
+        margin-bottom:0;
+        width:auto;
+	}
+    #clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_logo_box img{
+		width:87px;
+		height:42px;
+	}
+
+	#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_text_box{
+		width:51%;
+	}
+
+    #clicksnet-ads #clicksnet_fc_listingResults .clicksnet_info-row{
+        clear:both;
+    }
+    #clicksnet-ads #clicksnet_fc_listingResults.two-columns .clicksnet_fc_list_box .clicksnet_fc_text_box{
+        width:100%;
+    }
+
+    #clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_phone{
+		text-align:left;
+		font-size:13px;
+        width:60%;
+        float:left;
+	}
+    #clicksnet-ads #clicksnet_fc_listingResults.two-columns .clicksnet_fc_list_box .clicksnet_fc_text_box ul{
+        margin-left:0;
+    }
+    #clicksnet-ads #clicksnet_fc_listingResults.two-columns .clicksnet_fc_list_box .clicksnet_fc_right_box{
+        float:none;
+        margin:auto;
+    }
+}
+
+@media all and (max-width: 640px){
+
+    #clicksnet-ads #clicksnet_fc_listingResults [id*="adPanel"] {
+		display:block;
+		width: 96%;
+		float:none;
+	}
+
+	#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box{
+		width:auto;		
+	}
+	
+	
+	#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_title_row .clicksnet_fc_title{
+		padding:0;
+		margin-left:10px;
+        width:90%;
+
+	}
+	#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_logo_box{
+		width:auto;
+        margin:0;
+	}
+	
+	#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_text_box ul{
+		width:100%;
+		padding:0;
+		margin:0;
+	}
+
+	#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_logo_box img{
+		width:100px;
+		height:auto;
+	}
+	#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_logo_box .clicksnet_fc_phone{
+		font-size:14px;
+	}
+	#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_text_box{
+		width:70%;
+        padding-left:5px;
+        padding-right:0;
+	}
+	#clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_right_box{
+		width:25px;
+        height:100%;
+        position:absolute;
+        top:0;
+        right:0;
+        background: #ffc400; /* Old browsers */
+        background: -moz-linear-gradient(left,  #ffc400 0%, #ff6700 100%); /* FF3.6+ */
+        background: -webkit-gradient(linear, left top, right top, color-stop(0%,#ffc400), color-stop(100%,#ff6700)); /* Chrome,Safari4+ */
+        background: -webkit-linear-gradient(left,  #ffc400 0%,#ff6700 100%); /* Chrome10+,Safari5.1+ */
+        background: -o-linear-gradient(left,  #ffc400 0%,#ff6700 100%); /* Opera 11.10+ */
+        background: -ms-linear-gradient(left,  #ffc400 0%,#ff6700 100%); /* IE10+ */
+        background: linear-gradient(to right,  #ffc400 0%,#ff6700 100%); /* W3C */
+        filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffc400', endColorstr='#ff6700',GradientType=1 ); /* IE6-9 */
+        -moz-border-radius: 0 10px 10px 0;
+        -webkit-border-radius: 0 10px 10px 0;
+        -khtml-border-radius: 0 10px 10px 0;
+        border-radius: 0 10px 10px 0;
+        text-align:center;
+        vertical-align:middle;
+	}
+    #clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fcButton{
+        background:none;
+        height:45%;
+        margin:0;
+        padding:0;
+    }
+    #clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_right_box:after{
+        content: ">>";
+        color:#FFF;
+        font-size:11px;
+        text-align:center;
+        vertical-align:middle;
+        font-weight:bold;
+    }
+    #clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_text_box ul li:not(.read-more):not(:first-child):not(:nth-child(2)){
+        display:none;
+    }
+    #clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .read-more{
+        font-size:12px;
+        clear:both;
+        text-align:center;
+    }
+
+	
+}
+
+@media all and (max-width:480px) {
+    #clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_text_box{
+        width:60%;
+    }
+    #clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_logo_box img{
+		width:80px;
+		height:auto;
+	}
+    .responsive-view-program-info, .responsive-view-form {
+      font-size: 14px;
+    }
+}
+
+@media all and (max-width:380px) {
+
+}
+@media all and (max-width:340px){
+
+    #clicksnet-ads #clicksnet_fc_listingResults .clicksnet_fc_list_box .clicksnet_fc_text_box{
+        width:50%;
+    }
+}

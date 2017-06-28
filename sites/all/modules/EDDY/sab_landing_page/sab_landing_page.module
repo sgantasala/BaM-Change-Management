@@ -1,0 +1,761 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function sab_landing_page_menu() {
+
+    $items['landing-page'] = array(
+      'page callback' => 'get_landing_page_program_list_container',
+      'access arguments' => array('access content'),
+	  'type' => MENU_CALLBACK,
+    );
+
+    $items['landing-page-ajax'] = array(
+      'page callback' => 'get_landing_page_program_list',
+      'access callback' => TRUE,
+    );
+
+    $items['admin/config/system/sab-landing-page-settings'] = array(
+      'title' => 'SAB Landing Page Settings',
+      'description' => 'Additional site settings.',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('sab_landing_page_settings_form'),
+      'access arguments' => array('administer_sab_landing_page_settings'),
+      'type' => MENU_NORMAL_ITEM,
+    );
+    return $items;
+
+}
+
+/**
+ * Implements hook_page_alter().
+ */
+function sab_landing_page_page_alter(&$page) {
+
+    if(arg(0) == "landing-page"){
+
+        if(isset($page['sidebar_first'])) unset($page['sidebar_first']);
+        if(isset($page['content_column_two'])) unset($page['content_column_two']);
+
+    }
+
+}
+
+/**
+ * Implements hook_permission().
+ */
+function sab_landing_page_permission() {
+    return array(
+      'administer_sab_landing_page_settings' => array(
+        'title' => 'Administer Landing Page settings.'
+      ),
+    );
+}
+/**
+ * Implements hook_block_info().
+ */
+function sab_landing_page_block_info() {
+
+    $blocks['sab_landing_page_filters'] = array(
+      'info' => 'SAB Landing Page: Filters',
+      'status' => 1,
+      'cache' => DRUPAL_NO_CACHE,
+      'visibility' => 1,
+      'region' => 'below_header_area',
+      'pages' => 'landing_page',
+      'theme' => 'sab_bootstrap',
+      'weight' => '-1',
+    );
+
+    return $blocks;
+
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function sab_landing_page_block_view($delta = '') {
+
+    $data = array();
+
+    if($delta == 'sab_landing_page_filters'){
+        $data['content'] = drupal_get_form('sab_landing_page_filters_form');
+    }
+
+    return $data;
+
+}
+
+
+function get_landing_page_program_list_container(){
+    $markup = '<div class="landing_page_program_list_container clearfix">';
+    $markup .= '<p class="loading">Loading...</p>';
+    $markup .= '<div class="uil-default-css">';
+    $markup .= '<div></div>';
+    $markup .= '<div></div>';
+    $markup .= '<div></div>';
+    $markup .= '<div></div>';
+    $markup .= '<div></div>';
+    $markup .= '<div></div>';
+    $markup .= '<div></div>';
+    $markup .= '<div></div>';
+    $markup .= '<div></div>';
+    $markup .= '<div></div>';
+    $markup .= '<div></div>';
+    $markup .= '<div></div>';
+    $markup .= '</div>';
+    $markup .= '</div>';
+    return $markup;
+}
+
+/*
+ * Customized function
+ */
+function get_landing_page_program_list(){
+    $qs = array_change_key_case(drupal_get_query_parameters(), CASE_LOWER);
+
+    $options = array();
+    $programCount = 24;
+
+    if(!empty($qs['type'])){
+
+        if(strpos($qs['type'],"_t")){
+            $options['term'] = array(substr($qs['type'],0, strpos($qs['type'],"_t")));
+        }else{
+            $options['type'] = array($qs['type']);
+        }
+    }
+    if(!empty($qs['country'])) {
+        drupal_alter('country_to_state_options', $options, $qs['country']);
+    }
+    if(!empty($qs['city'])) $options['city'] = array($qs['city']);
+
+    if(!empty($_COOKIE['_CampaignTrackID']) && $_COOKIE['_CampaignTrackID'] != variable_get('eddy_core_track_id'))
+        $options['track_id'] = $_COOKIE['_CampaignTrackID'];
+
+    $options['nested_results_count'] = $programCount;
+    $options['remove_capped'] = true;
+    $options['include_images'] = True;
+    $options['sf_product_codes'] = array(2); //1 = SAB_PROFILE,2 = SAB_CPL,3 = SAB_TOP,4 = SAB_MS,5 = SAB_HB,6 = SAB_SL
+
+    try{
+
+	    if($serviceResults = eddy_services_get_listings($options, "GetInstitutions")){
+
+            $results = $serviceResults->GetInstitutionsResult->InstitutionList;
+
+            $totalProgramResultsCount = $serviceResults->GetInstitutionsResult->ProgramResultCount;
+            if($totalProgramResultsCount < $programCount)
+                $programCount = $totalProgramResultsCount;
+
+            $try = 0;
+            $count = 0;
+            $markup = '';
+
+            $country_terms = get_country_terms();
+
+            while($count < $programCount){
+
+                //loop institution
+                foreach($results as $institution){
+                    if($count < $programCount){
+                        if(!$institution->FailedValidation && !empty($institution->ProgramList) && array_key_exists($try, $institution->ProgramList)){
+
+                            //only one program for each instituion in each loop
+                            $program = $institution->ProgramList[$try];
+
+                            if(!$program->InquiryDisabled && isset($program->PaidStatusTypeId) && $program->PaidStatusTypeId == 3){
+                                $program = $institution->ProgramList[$try];
+                                $program->InstitutionId = $institution->InstitutionId;
+                                $program->InstitutionName = $institution->InstitutionName;
+
+                                $RequestInfoLink = eddy_listing_request_url($program);
+                                $logoTitle = 'Learn about ' . $program->InstitutionName;
+                                $size = 240;
+
+                                $markup .= '<div class="lp_program_list" >';
+                                $markup .= get_program_image($program, $country_terms, "logo/");
+                                $markup .= '<div class="lp_program_data" >';
+                                $markup .= eddy_build_institution_logo($program, $size, array('link' => $RequestInfoLink, 'linkTitle' => $logoTitle));
+                                $markup .= "<div class=\"lp_program_data_bottom clearfix\">";
+                                $markup .= "<p>$program->ProgramName</p><div class=\"learn-more button-link col-xs-8 col-xs-offset-2\"><a href=\"$RequestInfoLink#eddy-form-container\">Learn More</a></div>";
+                                $markup .= "</div>";
+                                $markup .= "</div>";
+                                $markup .= "</div>";
+                                $count++;
+                            }
+                        }
+                    }else{
+                        break;
+                    }
+                }
+                $try++;
+
+            }
+
+            if(empty($markup))
+                $markup = '<p>Sorry, there is no CPL programs available at this moment.</p>';
+            $output = render($markup);
+            //$output = str_replace('landing-page-ajax', 'landing-page', $output);
+
+            print $output;
+            drupal_exit();
+	    }
+    }
+    catch(Exception $e){
+        dpm($e);
+    }
+}
+
+
+
+/*
+ * Customized function
+ */
+function sab_landing_page_filters_form($form, &$form_state){
+
+    $qs = array_change_key_case(drupal_get_query_parameters(), CASE_LOWER);
+
+    $options = array();
+
+    $type_select = '';
+    if(array_key_exists('type', $qs)){
+
+        if(strpos($qs['type'],"_t")){
+            $options['term'] = array(substr($qs['type'],0, strpos($qs['type'],"_t")));
+        }else{
+            $options['type'] = array($qs['type']);
+        }
+        $type_select = $qs['type'];
+    }
+
+    if(array_key_exists('country', $qs) && $qs['country'] >0){
+        $options['country'] = array($qs['country']);
+    }
+
+    if(array_key_exists('city', $qs) && $qs['city'] >0){
+        $options['city'] = array($qs['city']);
+    }
+
+    if(!empty($_COOKIE['_CampaignTrackID']) && $_COOKIE['_CampaignTrackID'] != variable_get('eddy_core_track_id'))
+        $options['track_id'] = $_COOKIE['_CampaignTrackID'];
+
+    $options['remove_capped'] = true;
+    $options['sf_product_codes'] = array(2);
+
+    $results = eddy_services_get_listings($options, "GetFacetedNavigation");
+
+    $form['faceted_nav'] = array(
+    '#prefix' => '<div id="landing_page_filters" class="row clearfix faceted-navbar"><p>Find More Study Abroad Destinations</p>',
+    '#suffix' => '</div>',
+    );
+
+    $form['faceted_nav']['type'] = array(
+            '#type' => 'select',
+            '#options' => get_sab_landing_page_program_type_options($options, $results),
+            '#default_value' => $type_select,
+            '#required' => TRUE,
+            '#prefix' => '<div class="faceted-nav-select-wrap type">',
+            '#suffix' => '<input tabindex="-1" type="text" class="faceted-nav-text" readonly><i class="fa fa-angle-down"></i></div>',
+        );
+
+    $form['faceted_nav']['country'] = array(
+            '#type' => 'select',
+            '#options' => get_sab_landing_page_country_options($options, $results),
+            '#default_value' => array_key_exists('country', $options)? $options['country']:'',
+            '#required' => TRUE,
+            '#prefix' => '<div class="faceted-nav-select-wrap country">',
+            '#suffix' => '<input tabindex="-1" type="text" class="faceted-nav-text" readonly><i class="fa fa-angle-down"></i></div>',
+        );
+
+    if(array_key_exists('country', $options)){
+        $form['faceted_nav']['city'] = array(
+                '#type' => 'select',
+                '#options' => get_sab_landing_page_city_options($options, $results),
+                '#default_value' => array_key_exists('city', $options)? $options['city']:'',
+                '#prefix' => '<div class="faceted-nav-select-wrap city">',
+                '#suffix' => '<input tabindex="-1" type="text" class="faceted-nav-text" readonly><i class="fa fa-angle-down"></i></div>',
+         );
+
+    }
+
+    $form['#method'] = 'get';
+    $form['#after_build'] = array('_unset_form_elements');
+
+    return $form;
+
+}
+
+function _unset_form_elements($form){
+
+    //these value will not be passed as a query parameter
+    unset($form['#build_id'], $form['form_build_id'], $form['form_id'], $form['form_token']);
+
+    return $form;
+}
+/*
+ * Customized function
+ */
+function get_sab_landing_page_program_type_options($options=array(), $results){
+
+    $updated_options = array();
+
+    $updated_options = array(''=>'Choose a program type');
+    $program_types = array();
+    $available_terms = array();
+
+    try{
+
+        if(array_key_exists('type', $options)){
+            unset($options['type']);
+            $results = eddy_services_get_listings($options, "GetFacetedNavigation");
+
+        }
+        if(module_exists('sab_faceted_nav') && function_exists('get_sab_faceted_nav_terms')){
+            $program_types = get_sab_faceted_nav_terms('program_types');
+            $terms = get_sab_faceted_nav_terms('terms');
+
+            $program_types = array_merge($program_types, $terms);
+
+            if(isset($results->GetFacetedNavigationResult) && isset($results->GetFacetedNavigationResult->TermList)){
+
+                $available_terms = $results->GetFacetedNavigationResult->TermList;
+                $available_terms = array_flip($available_terms);
+
+            }
+        }
+
+
+
+        foreach($program_types as $type){
+            if(isset($type->field_external_id) && isset($type->name)){
+                if($type->vocabulary_machine_name=='terms'){
+
+                    if(array_key_exists($type->field_external_id[LANGUAGE_NONE][0]['value'], $available_terms))
+                        $updated_options += array($type->field_external_id[LANGUAGE_NONE][0]['value'].'_t' => $type->name);
+
+                }else{
+
+                    $updated_options += array($type->field_external_id[LANGUAGE_NONE][0]['value'] => $type->name);
+                }
+            }
+        }
+
+
+    }
+    catch(Exception $e){
+        dpm($e);
+    }
+
+    return $updated_options;
+}
+
+function get_sab_landing_page_country_options($options = array(), $results){
+
+    $filter_options = array();
+    $all_countries = array();
+    $taxonomy_terms = array();
+
+    try{
+
+        if(array_key_exists('country', $options)){
+            foreach($options as $key=>$item){
+                if($key != 'type' && $key != 'track_id' && $key != 'remove_capped' && $key != 'sf_product_codes'){
+                    unset($options[$key]);
+                }
+            }
+            $results = eddy_services_get_listings($options, "GetFacetedNavigation");
+
+        }
+        //only pass type
+
+
+        if(isset($results->GetFacetedNavigationResult) && isset($results->GetFacetedNavigationResult->Countries)){
+
+            $items = $results->GetFacetedNavigationResult->Countries;
+            $items = get_countries_and_states($items, $options);
+
+            foreach($items as $item){
+                if(isset($item->CountryId))
+                    $all_countries += array($item->CountryId => $item->CountryName);
+                elseif(isset($item->StateId))
+                    $all_countries += array($item->StateId."_s" => $item->StateName);
+            }
+        }
+
+        asort($all_countries);
+
+        $popular_countries = array();
+        if(!empty($all_countries)){
+
+            $taxonomy_terms = get_country_terms();
+
+            $index=0;
+
+            $group_name = '';
+            foreach($taxonomy_terms as $term){
+                if(isset($term->field_external_id) && !empty($term->field_external_id) && isset($term->field_is_popular) && !empty($term->field_is_popular) && $term->field_is_popular[LANGUAGE_NONE][0]['value'] == 1){
+                    $isid = $term->field_external_id[LANGUAGE_NONE][0]['value'];
+                    if(array_key_exists($isid,$all_countries) || array_key_exists($isid.'_s',$all_countries)){
+                        if(array_key_exists($isid.'_s',$all_countries))
+                            $isid .= '_s';
+
+                        if($index == 0){
+                            $index++;
+                            $group_name = "--Popular Countries--";
+                        }
+
+                        $popular_countries[$isid] = $all_countries[$isid];
+                        unset($all_countries[$isid]);
+                    }
+                }
+
+            }
+
+
+            if(!empty($group_name)){
+                $filter_options[$group_name] = $popular_countries;
+            }
+
+            //add "All Countries"
+
+            $group_name = "--All Countries--";
+            $filter_options[$group_name] = $all_countries;
+
+        }
+
+        $filter_options = array(''=>'Choose a country') + $filter_options;
+
+    }
+    catch(Exception $e){
+        dpm($e);
+    }
+
+    return $filter_options;
+}
+
+
+/**
+ * Gets List top faceted navigaition so it can be used in block.
+ */
+function get_sab_landing_page_city_options($options = array(), $results) {
+
+    $filter_options = array();
+    $all_cities = array();
+    $taxonomy_terms = array();
+
+
+    drupal_alter("country_to_state_options", $options);
+
+    if(array_key_exists('city', $options)){
+        foreach($options as $key=>$item){
+            if($key != 'type' && $key != 'country' && $key != 'track_id' && $key != 'remove_capped' && $key != 'sf_product_codes'){
+                unset($options[$key]);
+            }
+        }
+        $results = eddy_services_get_listings($options, "GetFacetedNavigation");
+    }elseif(array_key_exists('state', $options)){
+
+        $results = eddy_services_get_listings($options, "GetFacetedNavigation");
+
+    }
+
+    try{
+
+        if(isset($results->GetFacetedNavigationResult) && isset($results->GetFacetedNavigationResult->Cities)){
+
+            $items = $results->GetFacetedNavigationResult->Cities;
+
+            foreach($items as $item){
+                $all_cities += array($item->CityId => $item->CityName);
+            }
+        }
+
+        $popular_cities = array();
+        if(!empty($all_cities)){
+
+
+            $taxonomy_terms = get_city_terms_by_external_ids($all_cities);
+
+            $index=0;
+
+            $group_name = '';
+            foreach($taxonomy_terms as $term){
+                if(isset($term->field_external_id_value) && isset($term->field_is_popular_value) && $term->field_is_popular_value){
+                    $isid = $term->field_external_id_value;
+                    if(array_key_exists($isid,$all_cities)){
+
+                        if($index == 0){
+                            $index++;
+                            $group_name = "--Popular Cities--";
+                        }
+
+                        $popular_cities[$isid] = $all_cities[$isid];
+                        unset($all_cities[$isid]);
+                    }
+                }
+
+            }
+
+
+            if(!empty($group_name)){
+                $filter_options[$group_name] = $popular_cities;
+            }
+
+            //add "All Cities"
+
+            $group_name = "--All Cities--";
+            $filter_options[$group_name] = $all_cities;
+
+        }
+
+        $filter_options = array(''=>'Choose a city') + $filter_options;
+
+    }
+    catch(Exception $e){
+        dpm($e);
+    }
+    return $filter_options;
+}
+
+/*
+ * get back program image url or country default logo from taxonomy term
+ */
+function get_program_image($program, $country_terms, $logopath) {
+
+    $markup = '';
+    $base_image_url = get_base_content_url();
+
+    if(isset($program->ImageList)){
+        foreach($program->ImageList as $imageObj){
+            if($imageObj->ImageType == 6){//The tile(type=6) image is for the background image of the landpage tiles. The hero image(type=5) (also called header image) is for SAB requirements on certain pages. The Carousel(type=2) is the existing image type that was being used for image groups on grad schools.
+                $url = $base_image_url . $logopath.$imageObj->FileUrl;
+                $url = str_replace(' ','%20', $url);
+                if(module_exists('imagecache_external')){
+                    $markup = theme('imagecache_external', array(
+                        'path' => $url,
+                        'style_name'=> 'landing_thumbnail',
+                        'alt' => 'Druplicon',
+                    ));
+                }
+                break;
+
+            }
+
+        }
+
+    }
+	//get default logo from country taxonomy term of Drupal
+    if($markup == ""){
+        if(!empty($program->AddressList)){
+            $country_name = strtolower(trim($program->AddressList[0]->CountryName));
+            if(array_key_exists($country_name, $country_terms)){
+                if(!empty($country_terms[$country_name]->field_image) && !empty($country_terms[$country_name]->field_image[LANGUAGE_NONE][0]) && file_exists($country_terms[$country_name]->field_image[LANGUAGE_NONE][0]['uri'])){
+                    $markup = theme("image_style", array(
+                            'style_name'=>'landing_thumbnail',
+                            'path' => $country_terms[$country_name]->field_image[LANGUAGE_NONE][0]['uri'],
+                            ));
+                }
+            }
+
+        }
+    }
+
+    if($markup == '')
+        $markup = '<div class="logo_bk_img no-img">' . theme("image_style", array(
+                            'style_name'=>'landing_thumbnail',
+                            'path' => 'public://country_logo/no_country.png',
+                            )) .'</div>';
+    else
+        $markup = '<div class="logo_bk_img">' . $markup . '</div>';
+
+	return $markup;
+
+}
+
+/*
+ * get country terms from cache
+ */
+function get_country_terms(){
+
+    $country_terms = array();
+    if ($cached = cache_get('landing_page_countries')) {
+        $country_terms = $cached->data;
+    }
+    else {
+
+        $country_vocabulary = taxonomy_vocabulary_machine_name_load('Countries');
+        if(isset($country_vocabulary->vid)){
+            $countries = entity_load('taxonomy_term', FALSE, array('vid' => $country_vocabulary->vid));
+            foreach($countries as $country){
+                $country_terms[strtolower(trim($country->name))] = $country;
+            }
+        }
+        cache_set('landing_page_countries', $country_terms);
+
+    }
+
+    return $country_terms;
+}
+
+
+/*
+ * get country terms from cache
+ */
+function get_city_terms_by_external_ids($me_cities){
+
+    $city_terms = array();
+
+    try{
+        if(!empty($me_cities)){
+            $query = "SELECT tid,vid,name,e.bundle as vocabulary_machine_name, e.field_external_id_value, p.field_is_popular_value FROM {taxonomy_term_data} t \n";
+            $query .= " join {field_data_field_external_id} e on t.tid = e.entity_id and e.entity_type = 'taxonomy_term' and e.bundle = 'cities'";
+            $query .= " join {field_data_field_is_popular} p on t.tid = p.entity_id and p.entity_type = 'taxonomy_term' and p.bundle = 'cities'";
+            $query .= " where field_external_id_value in (" . implode(',', array_keys($me_cities)) .")";
+            $city_terms = db_query($query)->fetchAllAssoc('tid');
+
+        }
+    }
+    catch(Exception $e){
+        dpm($e);
+    }
+
+    return $city_terms;
+}
+
+
+
+function get_countries_and_states($me_countries, $options) {
+
+    $states = array();
+    foreach($me_countries as $key => $country){
+        if($country->CountryId == 80){//United Kingdom
+            $options['country'] = array($country->CountryId);
+            unset($me_countries[$key]);
+
+            $results = eddy_services_get_listings($options, "GetFacetedNavigation");
+
+            $states = array_merge($states, $results->GetFacetedNavigationResult->States);
+
+        }
+
+    }
+
+    $me_countries = array_merge($me_countries, $states);
+
+    return $me_countries;
+}
+function sab_landing_page_country_to_state_options_alter(&$options, $val = ''){
+
+    if(array_key_exists('country', $options) && !empty($options['country'])){
+
+        $val = $options['country'][0];
+
+    }
+
+    if(strpos($val,"_s")){
+        $v = substr($val,0,strlen($val)-strpos($val,"_s")+2);
+        $options['state'] = array($v);
+        if(array_key_exists('country', $options))
+            unset($options['country']);
+    }elseif(!array_key_exists('country', $options)){
+        $options['country'] = array($val);
+    }
+    return $options;
+}
+
+/**
+ * Provides custom form settngs.
+ */
+function sab_landing_page_settings_form($form, &$form_state) {
+    //  $form['description'] = array(
+    //  '#markup' => '<div>' . t('This example shows an add-more and a remove-last button. The <a href="!ajax">AJAX version</a> does it without page reloads; the <a href="!multistep">non-js version</a> is the same code but simulates a non-javascript environment, showing it with page reloads.',
+    //  array('!ajax' => url('examples/ajax_example/add_more'), '!multistep' => url('examples/ajax_example/add_more_no_js')))
+    //    . '</div>',
+    //);
+    $form['lp_header'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Landing Page Header'),
+      '#default_value'=>(variable_get('lp_header')!='')?variable_get('lp_header'):'Have the experience of a lifetime<span class="location"></span>!',//(!empty(variable_get('lp_header'))?variable_get('lp_header'):
+    );
+    // Because we have many fields with the same values, we have to set
+    // #tree to be able to access them.
+    $form['#tree'] = TRUE;
+    $form['lp_testimonials'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Rotate Testimonials'),
+      // Set up the wrapper so that AJAX will be able to replace the fieldset.
+      '#prefix' => '<div id="lp-testimonials-wrapper">',
+      '#suffix' => '</div>',
+    );
+
+    $lp_testimonials = explode(";@", variable_get('lp_testimonials'));
+    // Build the fieldset with the proper number of names. We'll use
+    // $form_state['num_names'] to determine the number of textfields to build.
+    if (empty($form_state['num_testimonials'])) {
+        if(count($lp_testimonials)>0){
+
+            $form_state['num_testimonials'] = count($lp_testimonials);
+        }else{
+            $form_state['num_testimonials'] = 1;
+        }
+    }
+
+    for ($i = 0; $i < $form_state['num_testimonials']; $i++) {
+        $form['lp_testimonials']['testimonial'][$i] = array(
+          '#type' => 'textarea',
+          '#title' => t('Testimonial'),
+          '#default_value' => (!empty($lp_testimonials)?$lp_testimonials[$i]:''),
+        );
+    }
+    $form['lp_testimonials']['add_testimonial'] = array(
+      '#type' => 'submit',
+      '#value' => t('Add one more'),
+      '#submit' => array('testimonial_add_one'),
+      // See the examples in ajax_example.module for more details on the
+      // properties of #ajax.
+      '#ajax' => array(
+        'callback' => 'testimonial_callback',
+        'wrapper' => 'lp-testimonials-wrapper',
+      ),
+    );
+    if ($form_state['num_testimonials'] > 1) {
+        $form['lp_testimonials']['remove_testimonial'] = array(
+          '#type' => 'submit',
+          '#value' => t('Remove one'),
+          '#submit' => array('testimonial_remove_one'),
+          '#ajax' => array(
+            'callback' => 'testimonial_callback',
+            'wrapper' => 'lp-testimonials-wrapper',
+          ),
+        );
+    }
+    $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Submit'),
+    );
+
+    return $form;
+}
+
+function testimonial_add_one($form, &$form_state) {
+    $form_state['num_testimonials']++;
+    $form_state['rebuild'] = TRUE;
+}
+
+function testimonial_callback($form, $form_state) {
+    return $form['lp_testimonials'];
+}
+
+function testimonial_remove_one($form, &$form_state) {
+    if ($form_state['num_testimonials'] > 1) {
+        $form_state['num_testimonials']--;
+    }
+    $form_state['rebuild'] = TRUE;
+}
+
+function sab_landing_page_settings_form_submit($form, &$form_state) {
+    variable_set('lp_header', $form_state['values']['lp_header']);
+    variable_set('lp_testimonials', implode(';@', $form_state['values']['lp_testimonials']['testimonial']));
+}

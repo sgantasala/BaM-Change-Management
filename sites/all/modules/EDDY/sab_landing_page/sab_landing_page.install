@@ -1,0 +1,66 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the landing page module.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function sab_landing_page_install(){
+    $count = 0;
+    $failed = '';
+    $country_terms = array();
+    //get Countries taxonomy terms
+    $country_vocabulary = taxonomy_vocabulary_machine_name_load('Countries');
+    if(isset($country_vocabulary->vid)){
+        $country_terms = entity_load('taxonomy_term', FALSE, array('vid' => $country_vocabulary->vid));
+    }
+    
+    foreach($country_terms as $country){
+        if($country->tid == 7018){
+            $uri = "public://country_logo/virgisland-british.jpg";
+        }else if($country->tid == 7019){
+            $uri = "public://country_logo/virgislands-us.jpg";        
+        }else{
+            $uri = "public://country_logo/" . sab_listing_create_safe_name($country->name) . ".jpg";
+        }
+        if(empty($country->field_image)){
+
+            if(file_exists($uri)){
+                global $user;
+
+                $file = new stdClass;
+                $file->uid = $user->uid;
+                $file->uri = $uri;
+                $file->filename = drupal_basename($file->uri);            
+                $file->filemime = file_get_mimetype($file->uri);
+                $file->filesize = filesize($file->uri);
+                $file->status = 1;
+
+                file_save($file);            
+                
+                $country->field_image['und'][0] = array(
+                    'fid' => $file->fid,
+                    'uri' => $file->uri,
+                    'filename' => $file->filename,
+                    'filemime' => $file->filemime,
+                    'uid' => $file->uid,
+                    'status' => $file->status,
+                    'timestamp' => $file->timestamp,
+                    'filesize' => $file->filesize,
+                );
+
+                taxonomy_term_save($country);
+
+                $count++;
+            }else{
+                $failed .= $country->name . ", ";
+            }
+        }
+
+    }
+
+    drupal_set_message($count . ' Default logo images for Country are saved.' . (($failed != '')?$failed . "failed.":''));
+}

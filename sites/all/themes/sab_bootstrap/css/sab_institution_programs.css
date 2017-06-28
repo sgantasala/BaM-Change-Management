@@ -1,0 +1,424 @@
+
+/*** Institution/Program Detail *****/
+.block .provider-name{
+    color:#FCBA30;
+    margin-top:0;
+    margin-bottom:0;
+} 
+#detail-read-more{
+    font-size:30px;
+    color:#505C72;
+    display: block;
+    text-align: center;
+    position: absolute;
+    bottom: -15px;
+    left: 48%;
+}
+
+/* Program Detail */
+.program-details-holder{
+    margin:10px auto;
+    max-width:1280px;
+}
+.program-details-holder .block-title,
+.block-sab-institution-details .block-title,
+.sab-school-detail-program-head {
+    color: inherit;        
+    font-size: 38px;
+    font-weight: lighter;
+    margin-top:0;
+}
+.program-details-holder .block-title::after,
+.block-sab-institution-details .block-title::after,
+.sab-school-detail-program-head::after {
+    content: "";
+    position: relative;
+    background-color: #333;
+    height: 2px;
+    width: 35%;
+    display: inline-block;
+    bottom: 10px;
+    margin-left: 5px;
+}
+
+
+#block-sab-program-details-sab-program-details-page-logo .content{
+    height:100%;
+    display:table;
+}
+    #block-sab-program-details-sab-program-details-page-logo .program-details-logo {
+        display:table-cell;
+        vertical-align:middle;
+}
+
+#block-sab-program-details-sab-program-details-page-banner,
+#block-sab-institution-details-sab-institution-details-title{
+    max-width:none;
+    margin:0;
+    background-color:rgba(88,110,134, 0.8);/*#586E86*/
+    color:#fff;
+}
+#block-sab-program-details-sab-program-details-page-banner .content,
+#block-sab-institution-details-sab-institution-details-title .content{
+    max-width:1280px;
+    margin:auto;
+}
+#block-sab-program-details-sab-program-details-page-banner .program-detail-header,
+#block-sab-institution-details-sab-institution-details-title .institutiondetail-header{
+    background-color:transparent;
+    margin-bottom:0;
+    padding:25px;
+    border-radius:0;
+    font-size:19px;
+}
+#block-sab-program-details-sab-program-details-page-banner .sab-program-name,    
+#block-sab-program-details-sab-program-details-page-banner .program-name {
+    font-weight:normal;
+}
+#block-sab-program-details-sab-program-details-page-banner .button-link a{
+    color:#fff;
+    border-color:#fff;
+}
+    #block-sab-program-details-sab-program-details-page-banner .button-link a:hover {
+        color: #37423A;
+        border-color: #37423A;
+    }
+#block-sab-program-details-sab-program-details-page-banner .avg-rating {
+    font-size:inherit;
+    text-align:center;
+}
+#block-sab-program-details-sab-program-details-page-banner .avg-rating .score{
+    display:none;
+}
+
+#block-sab-program-details-sab-program-details-page-banner .avg-rating .fa-star-half-o:before{
+    content:"\f089";
+    z-index:1;
+    position:absolute;  
+}
+#block-sab-program-details-sab-program-details-page-banner .avg-rating .fa-star-half-o:after{
+    content:"\f005";
+    z-index:0;
+    color:#294461;
+    position:relative;
+}
+#block-sab-program-details-sab-program-details-page-banner .avg-rating .fa-star-o:before{
+    content:"\f005";
+    color:#294461;
+}
+.program-details-holder .region-content-column-one {
+    background-color:#D8DAD9;
+    padding:20px;
+}
+
+#block-sab-program-details-sab-program-details-description dl{
+    margin:5px 0 0;
+}
+#block-sab-program-details-sab-program-details-description dt,
+#block-sab-program-details-sab-program-details-description dd{
+    display:inline-block;
+    margin-right:5px;
+}
+
+
+/* Institution Detail */
+#block-sab-institution-details-sab-institution-details{
+    padding:10px 20px 0;
+}
+
+.sab-school-program-items {
+    background-color: #D8D9DB;
+    padding: 15px;
+    margin: 10px auto 0;
+}
+.eddy-listings .listing-row.sab-school-program-item {
+       width: 49.5%; 
+       padding:0;
+       margin:0 0 10px;
+}
+.eddy-listings .listing-row.sab-school-program-item.odd  {
+    margin-right: 1%;
+}
+.sab-school-detail-program-head{
+    font-size:30px;
+    margin-bottom:10px;
+}   
+.sab-school-detail-program-head::after{
+    width:10%;
+}
+.sab-school-detail-description{
+    margin-bottom:20px;
+}
+.sab-school-program-details .sab-school-title,
+.sab-school-program-details .sab-school-program-title{
+    font-weight:bold;
+}
+.sab-school-program-details .sab-school-program-title,
+.sab-school-program-details .sab-schoolprogram-desc{
+    padding:0;
+}
+.sab-school-program-details .avg-rating{
+    padding:0;
+}
+.sab-school-program-details .learn-more{
+    padding-right:10px;
+    font-size:90%;
+    float:right;
+    position:relative;
+}
+
+@media(max-width:1199px) {
+    .program-details-holder .block-title,
+    .block-sab-institution-details .block-title,
+.sab-school-detail-program-head {
+        font-size: 30px;
+    }
+    .sab-school-detail-program-head {
+        font-size:26px;
+    }
+    #block-sab-program-details-sab-program-details-page-banner .program-detail-header {
+        padding: 25px 0px 15px;
+    }
+}
+@media(max-width:991px) {
+    .program-details-holder .block-title,
+    .block-sab-institution-details .block-title,
+    .sab-school-detail-program-head {
+        font-size: 23px;
+    }
+    .program-details-holder .block-title::after, 
+    .block-sab-institution-details .block-title::after, 
+    .sab-school-detail-program-head::after{
+        height:1px;
+        bottom:6px;
+    }
+    .block .provider-name{
+        font-size:1.2em;
+    }
+
+    /* Institution Detail */
+    .sab-school-detail-program-head{
+        font-size:22px;
+    }
+
+    .sab-school-program-details .sab-school-program-title,
+    .sab-school-program-details .sab-schoolprogram-desc{
+        width:69%;
+    }
+    .sab-school-program-details .avg-rating{
+        width:auto;
+        clear:both;
+    }
+    .sab-school-program-details .learn-more{
+        width:30%;
+        bottom:initial;
+    }
+    /* Program Detail */
+    #block-sab-program-details-sab-program-details-page-banner .button-section {
+        font-size:17px;
+        padding:0;
+    }
+        
+
+
+    #block-sab-program-details-sab-program-details-page-banner .program-name{
+        font-size:1em;
+        margin-top:5px;
+}
+    /*#block-sab-program-details-sab-program-details-page-banner .request_info{
+        font-size:13px;
+}*/
+    #block-sab-program-details-sab-program-details-page-banner .button-section > div{
+        float:none;
+        margin-bottom:8px;
+    }
+
+}
+
+@media(max-width:840px) {
+
+    .more-content,    
+    .more-content.show img{
+        display:none;
+}
+ 
+    /* Institution Detail */
+    .eddy-listings .listing-row.sab-school-program-item{
+        float:none;
+        width:100%;
+}
+    /* Program Detail */
+    .program-details-holder{
+        margin:0;
+}
+
+    .program-details-holder .columns-content > div{
+        width:100%;
+        padding:0;
+        margin-bottom:10px;
+    }
+    .program-details-holder .columns-content .region-content-column-two{
+        padding:10px 15px 0;
+}
+
+    #block-sab-program-details-sab-program-details-page-banner .program-detail-header{
+        margin:0;
+}
+    #block-sab-program-details-sab-program-details-page-banner .button-section {
+        font-size:16px;
+}
+
+
+}
+
+
+@media(max-width:767px) {
+    .block .provider-name{
+        font-size:18px;
+    }
+    /* Institution Detail */    
+    .sab-school-program-details .sab-schoolprogram-desc{
+        display:none;
+    }
+    /* Program detial */
+
+    #block-sab-program-details-sab-program-details-page-banner .program-detail-header{
+        padding:20px 5px;
+    } 
+
+    #block-sab-program-details-sab-program-details-page-banner .name-section{
+        width:70%;
+    }
+    #block-sab-program-details-sab-program-details-page-banner .button-section{
+        width:30%;
+        font-size:13px;
+    }
+    #block-sab-program-details-sab-program-details-page-banner .button-link a{
+        /*display:inline;*/
+        font-size:14px;
+    }
+
+
+    #block-sab-program-details-sab-program-details-page-banner .program-name{
+        font-size:15px;
+    }
+    #block-sab-program-details-sab-program-details-page-banner .request_info{
+        font-size:12px;
+    }
+    }
+
+@media(min-width:681px) {
+    #block-sab-program-details-sab-program-details-page-logo .program-details-logo {
+        display: block !important;
+    }
+}
+@media(max-width:680px) {
+    /* Program Detail */
+    #block-sab-program-details-sab-program-details-page-logo:not(.free){
+        width:25%;
+        min-height:initial;
+        margin:0;
+        display:table-cell;
+        vertical-align:middle;
+        height:auto;
+        padding:0;
+    }
+    #block-sab-program-details-sab-program-details-page-banner:not(.free){
+        background-color:transparent;
+        color:#153B60;
+        width:75%;     
+        display:table-cell;
+        vertical-align:middle;   
+    }
+        
+    #block-sab-program-details-sab-program-details-page-banner:not(.free) .provider-name{
+        color:inherit;
+}
+
+    #block-sab-program-details-sab-program-details-page-banner:not(.free) .name-section{
+        width:57%;
+        padding:0;
+    }
+    #block-sab-program-details-sab-program-details-page-banner:not(.free) .button-section{
+        width:43%;
+        padding:0;
+    }
+        #block-sab-program-details-sab-program-details-page-banner:not(.free) .button-link a{
+            color:#153B60;
+            border-color:#153B60;
+    }
+
+}
+
+@media(max-width:580px) {
+    .block .provider-name{
+        font-size:16px;
+    }
+     /* Program Detail */
+    #block-sab-program-details-sab-program-details-page-banner .name-section{
+        width:65%;
+    }
+    #block-sab-program-details-sab-program-details-page-banner .button-section{
+        width:35%;
+    }    
+    #block-sab-program-details-sab-program-details-page-banner .button-link a{
+        font-size:12px;
+    }
+    
+    }
+
+@media(max-width:480px) {
+    /* Institution Detail */
+    .sab-school-program-details .sab-school-title,
+    .sab-school-program-details .sab-school-program-title,
+    .sab-school-program-details .learn-more{
+        font-size:11px;
+}
+
+
+    /* Program Detail */
+    .program-details-holder .block-title,
+    .block-sab-institution-details .block-title,
+    .sab-school-detail-program-head {
+        font-size:20px;
+    }
+    .program-details-holder .block-title::after,
+    .block-sab-institution-details .block-title::after,
+    .sab-school-detail-program-head::after {
+        bottom:8px;
+    }
+    #block-sab-program-details-sab-program-details-page-banner:not(.free) .name-section{
+        display:none;
+    }
+    #block-sab-program-details-sab-program-details-page-banner:not(.free) .button-section{
+        width:90%;
+    }
+    #block-sab-program-details-sab-program-details-page-banner.free .name-section,
+    #block-sab-program-details-sab-program-details-page-banner.free .button-section{
+        width:100%;
+        padding:0;
+    }
+        #block-sab-program-details-sab-program-details-page-banner.free .button-section > div{
+            text-align:left;
+    }
+
+        
+}
+ 
+@media(max-width:360px) {
+    /* Institution Detail */
+    .sab-school-program-details .learn-more{
+        font-size:10px;
+    }
+    /* Program Detail */
+    .program-details-holder .block-title,
+    .block-sab-institution-details .block-title,
+    .sab-school-detail-program-head {
+        font-size:16px;
+    }
+    .program-details-holder .block-title::after,
+    .block-sab-institution-details .block-title::after,
+    .sab-school-detail-program-head::after {
+        bottom:5px;
+    }
+}

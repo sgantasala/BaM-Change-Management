@@ -1,0 +1,287 @@
+<?php
+
+///**
+// * Implements hook_node_view().
+// */
+//function eddy_https_migration_node_view($node, $view_mode){
+
+//    if(node_is_page($node)){
+//        _eddy_https_migration_update_content();
+//    }
+
+//}
+
+/**
+ * Implements hook_install().
+ */
+function eddy_https_migration_install() {
+
+    _eddy_https_migration_update_content();
+    drupal_set_message("The EDDY https Migration module has been installed.");
+
+}
+
+/**
+ * Updates all the content that has http://
+ */
+function _eddy_https_migration_update_content(){
+
+    $domains_to_check = _eddy_https_migration_domains_to_check();
+
+    try{
+
+        #region Nodes
+
+        $fields = field_info_fields();
+
+        $nids = array();
+
+        foreach($fields as $k => $v){
+
+            if(isset($v['columns']['value'])){
+
+                    $table = 'field_data_' . $k;
+                    $value_column = $k . '_value';
+                    $summary_column = $k . '_summary';
+
+                    $q = db_select($table, "f")
+                    ->fields("f");
+
+                    $db_or = db_or();
+
+                    if(isset($v['columns']['summary'])){
+
+                        foreach($domains_to_check as $d){
+
+                            $db_or->condition("f.$summary_column", "%$d%", "LIKE");
+
+                        }
+
+                    }
+
+                    foreach($domains_to_check as $d){
+
+                        $db_or->condition("f.$value_column", "%$d%", "LIKE");
+
+                    }
+
+                    $q->condition($db_or);
+
+                    $q->condition("f.entity_type", "node");
+
+                    //dpq($q);
+
+                $r = $q->execute()->fetchAllAssoc('entity_id');
+
+                $nids = array_merge($nids, array_keys($r));
+
+            }
+
+        }
+
+        $nodes = node_load_multiple($nids);
+
+        foreach($nodes as $node){
+
+            foreach($node as $k => $v){
+
+                if(is_array($v) && !empty($v[LANGUAGE_NONE][0]['value'])){
+
+                    $i = 0;
+                    foreach($v[LANGUAGE_NONE] as $field){
+
+                        _eddy_https_migration_replace_http_reference($node->{$k}[LANGUAGE_NONE][$i]['value']);
+                        _eddy_https_migration_replace_http_reference($node->{$k}[LANGUAGE_NONE][$i]['safe_value']);
+
+                        if(isset($node->{$k}[LANGUAGE_NONE][$i]['summary'])){
+
+                            _eddy_https_migration_replace_http_reference($node->{$k}[LANGUAGE_NONE][$i]['summary']);
+                            _eddy_https_migration_replace_http_reference($node->{$k}[LANGUAGE_NONE][$i]['safe_summary']);
+
+                        }
+
+                        $i++;
+
+                    }
+
+                }
+
+            }
+
+            $node->log = 'HTTPS Migration: "http" references changed to relative link or to be "https."';
+            node_save($node);
+
+        }
+
+        #endregion
+
+
+        #region Pixels
+
+        //Replace http:// in Global Pixels
+        $header_pixels = variable_get("eddy_pixels_header");
+
+        _eddy_https_migration_replace_http_reference($header_pixels, true);
+
+        variable_set("eddy_pixels_header", $header_pixels);
+
+        $footer_pixels = variable_get("eddy_pixels_footer");
+
+        _eddy_https_migration_replace_http_reference($footer_pixels, true);
+
+        variable_set("eddy_pixels_footer", $footer_pixels);
+
+        #endregion
+
+        #region MetaTags
+        ////Meta Tags
+        //$r = db_select("metatag", "m")
+        //    ->fields('m')
+        //    ->execute()
+        //    ->fetchAllAssoc('entity_id');
+
+        //foreach($r as $k => $v){
+
+        //    if($k == 1){
+
+        //        $tags = unserialize($v->data);
+
+        //        foreach($tags as $tk => $tv){
+
+        //            dpm();
+
+        //            if(isset($tv['value']) && ){
+
+
+
+        //            }
+
+
+        //        }
+
+        //        dpm($tags);
+
+        //    }
+
+        //}
+
+        //dpm($r);
+        #endregion
+
+        #region Blocks
+        $q = db_select("block_custom", "b")
+            ->fields('b');
+
+            $db_or = db_or();
+
+            foreach($domains_to_check as $d){
+
+                $db_or->condition("b.body", "%$d%", "LIKE");
+
+            }
+
+            $q->condition($db_or);
+
+        $blocks = $q->execute()->fetchAll();
+
+        $bids = array();
+        foreach($blocks as $block){
+
+            if(isset($block->body)){
+
+                _eddy_https_migration_replace_http_reference($block->body);
+
+                db_update('block_custom')
+                ->fields(array('body' => $block->body))
+                ->condition('bid', $block->bid)->execute();
+
+                $bids[] = $block->bid;
+
+            }
+
+
+        }
+
+        watchdog('http_to_https', "the following blocks where updated that contained http://:" . implode(', ', $bids), array(), WATCHDOG_INFO);
+
+        #endregion
+
+    }catch(Exception $e){
+
+        dpm($e);
+
+    }
+
+}
+
+
+//Was going to have a roll back plan.
+//function eddy_https_migration_uninstall() {
+
+//    drupal_set_message("The EDDY https Migration module has been uninstalled.");
+
+//}
+
+/**
+ * Replaces http:// with https:// for a particular string
+ * @param string The string which contains https
+ * @param bool Preserve the full domain when replacing https
+ */
+function _eddy_https_migration_replace_http_reference(&$value, $full_domain = false){
+
+    $domain = _eddy_https_get_current_domain();
+
+    if($full_domain){
+        $value = str_replace("http://$domain/", "https://$domain/", $value);
+        $value = str_replace("http://$domain", "https://$domain", $value);
+    }else{
+        $value = str_replace("http://$domain/", "/", $value);
+        $value = str_replace("http://$domain", "/", $value);
+    }
+
+    $domains_to_check = _eddy_https_migration_domains_to_check();
+
+    array_shift($domains_to_check);
+
+    $value = str_replace("'http://' + location.hostname + ", "location.protocol + '//' + location.hostname + ", $value);
+
+    foreach($domains_to_check as $d){
+
+        $replace = str_replace("http://", "https://",$d);
+        $value = str_replace($d, $replace, $value);
+
+    }
+
+}
+
+/**
+ * Gets the current domain, will need to do something different for EDDYLandingpages
+ */
+function _eddy_https_get_current_domain(){
+
+    $segments = explode('.', $_SERVER['HTTP_HOST']);
+    $domain = 'www.' . $segments[1] . '.com';
+
+    return $domain;
+
+}
+
+/**
+ * List of domains to check
+ */
+function _eddy_https_migration_domains_to_check(){
+
+    $output = array(
+        'http://' . _eddy_https_get_current_domain(),
+        'http://content.educationdynamics.com',
+        'http://content1.educationdynamics.com',
+        'http://content2.educationdynamics.com',
+        'http://content3.educationdynamics.com',
+        'http://content4.educationdynamics.com',
+        'http://www.youtube.com',
+        '\'http://\' + location.hostname + ',
+    );
+
+    return $output;
+
+}

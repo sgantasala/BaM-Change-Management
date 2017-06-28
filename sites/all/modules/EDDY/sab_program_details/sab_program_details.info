@@ -1,0 +1,10 @@
+name = SAB Program Details
+description = Provides a page and some Program Detail Helper Functions.
+core = 7.x
+
+package = Eddy Core Business
+
+dependencies[] = eddy_services
+dependencies[] = eddy_listing
+
+scripts[] = 'sab_program_details.js'

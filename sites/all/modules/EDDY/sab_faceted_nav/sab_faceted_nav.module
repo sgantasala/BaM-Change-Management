@@ -1,0 +1,3020 @@
+<?php
+
+/**
+ * Implements hook_block_info().
+ */
+function sab_faceted_nav_block_info() {
+
+    $blocks = array();
+
+    $blocks['sab_faceted_nav_general'] = array(
+        'info' => t('SAB: Faceted Navigation General'),
+        'title' => '<none>',
+        'cache' => DRUPAL_CACHE_PER_PAGE
+     );
+    $blocks['sab_faceted_nav_home'] = array(
+        'info' => t('SAB: Faceted Navigation home'),
+        'title' => '<none>',
+        'cache' => DRUPAL_CACHE_PER_PAGE
+    );
+    $blocks['sab_faceted_nav_product_list'] = array(
+       'info' => t('SAB: Faceted Navigation on Product List'),
+       'title' => '<none>',
+       'cache' => DRUPAL_CACHE_PER_PAGE
+   );
+
+   return $blocks;
+
+}
+
+/**
+ * Implements hook_menu().
+ */
+function sab_faceted_nav_menu() {
+    
+    $items = array();
+
+    //GET Listings VIA AJAX
+    $items['ajax/sab-faceted-nav/%'] = array(
+      //'title' => 'Listings Ajax',
+      'page callback' => 'get_sab_faceted_nav_product_list_markup_ajax',
+      'page arguments' => array(2),
+      'access callback' => TRUE,
+    );
+
+    return $items;
+
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function sab_faceted_nav_block_view($delta="") {
+
+    $subject = 'Subject';
+    $content = 'content';
+
+    drupal_add_js(drupal_get_path('module', 'sab_faceted_nav') . '/js/sab_faceted_nav.js', array('every_page' => true));
+    switch($delta){
+        case 'sab_faceted_nav_general':
+            $subject = 'General Navigation';
+            //$content =  get_sab_faceted_nav_general_markup($results);
+            $content =  drupal_get_form('get_sab_faceted_nav_general_form');
+            break;
+        case 'sab_faceted_nav_product_list':
+            $subject = 'Product List Navigation';
+            if(function_exists('sab_product_list_show_block') && sab_product_list_show_block()) {
+                $content =  get_sab_faceted_nav_product_list_markup();
+            }
+            else{
+                $content='';
+            }
+
+            break;
+        case 'sab_faceted_nav_home':
+            $subject = 'Home Banner Navigation';
+            $content =  drupal_get_form('get_sab_faceted_nav_home_form');
+            break;
+    }
+
+
+    $block['subject'] = $subject;
+    $block['content'] = $content;
+
+    return $block;
+}
+
+
+/**
+ * Implements hook_form_alter().
+ */
+function sab_faceted_nav_form_alter(&$form, &$form_state, $form_id) {
+
+    if($form_id == "eddy_core_custom_site_settings_form"){
+
+        $form["#submit"][] = "_sab_faceted_nav_custom_site_settings";
+
+        $form['matching_engine_is_enabled'] = array(
+          '#type' => 'checkbox',
+          '#title' => t('Enable matching engine faceted navigation option filtering.'),
+          '#default_value' => variable_get('eddy_core_matching_engine_is_enabled'),
+        );
+
+        $form["sab_facted_nav"]['actions']['clear_cache'] = array(
+          "#type" => "submit",
+          "#value" => "Clear Faceted Nav Cache",
+          '#submit' => array('_sab_faceted_nav_clear_all_cache'),
+        );
+
+    }
+
+}
+
+/**
+ * Implements hook_cron().
+ */
+function sab_faceted_nav_cron(){
+
+    cache_clear_all('*', 'cache_sab_faceted_nav', TRUE);
+
+}
+
+function _sab_faceted_nav_clear_all_cache($form, $form_state){
+
+    cache_clear_all('*', 'cache_sab_faceted_nav', TRUE);
+    drupal_set_message("SAB Faceted Nav Cache has been cleared.");
+
+}
+
+
+function _sab_faceted_nav_custom_site_settings($form, $form_state){
+    
+    variable_set('eddy_core_matching_engine_is_enabled', $form_state['values']['matching_engine_is_enabled']);
+
+}
+
+
+/**
+ * Implements hook_node_presave().
+ */
+function sab_faceted_nav_node_presave($node) {
+
+    if($node->type == 'city'){
+        cache_clear_all('node/*', 'cache_sab_faceted_nav', TRUE);
+        cache_clear_all('product_list/*', 'cache_sab_faceted_nav', TRUE);
+    }
+
+}
+
+
+function sab_faceted_nav_get_faceted_nav_results($params = array()){
+    
+    $qs = array_change_key_case(drupal_get_query_parameters(), CASE_LOWER);
+
+    //Get Results With All Filters
+    
+    $options = array(
+        'page' => 0,
+        'results_count' => 10,
+        );
+
+    //$product_list = null;
+    $allowed_qs = sab_listing_get_allowed_query_strings();
+
+    //only allowed query string parameter will be kept
+    if(count($qs)>0){
+        foreach($qs as $k => $v){
+            if(in_array($k, $allowed_qs)){
+                $options[$k] = explode(',', $v);
+            }
+        }
+    }
+
+    $allowed_term_option_map['program_types'] = 'type';
+    $allowed_term_option_map['campus_types'] = 'campus_type';
+    $allowed_term_option_map['levels'] = 'level';
+    $allowed_term_option_map['categories'] = 'category';
+    $allowed_term_option_map['specialties'] = 'specialty';
+    $allowed_term_option_map['states'] = 'state';
+    $allowed_term_option_map['countries'] = 'country';
+    $allowed_term_option_map['intensive_languages'] = 'language';
+    $allowed_term_option_map['terms'] = 'term';
+
+    if(function_exists('sab_product_list_show_block') && sab_product_list_show_block()){//this can be removed later, product list page -- isid params passed in
+        $options = $params;
+        //product_list->relationships_terms;
+    }else{//not product list page -- tid params passed in
+        //driven by ajax 
+        $qulify_terms = array_intersect_key($params, array_flip($allowed_term_option_map));
+        foreach($qulify_terms as $key=>$value){
+            if($value == '0')
+                unset($qulify_terms[$key]);
+        }
+        $qulify_terms = array_values($qulify_terms);
+
+        $terms = taxonomy_term_load_multiple($qulify_terms);
+
+        //convert params tids to external isids 
+        foreach($terms as $k => $v){
+            if(isset($v->field_external_id['und'])){
+                foreach($v->field_external_id['und'] as $k1 => $v1){
+
+                    $options[$allowed_term_option_map[$v->vocabulary_machine_name]][]= $v1['value'];
+                }
+            }
+        }
+    }
+    
+    $results = eddy_services_get_listings($options, "GetFacetedNavigation");
+
+    return $results;
+}
+
+
+/*
+ * create filter item as select box
+ */
+function sab_faceted_nav_item_select($param){
+    return (array("0"=>$param['select_display_text']) + sab_faceted_nav_item_array($param));
+}
+
+/**
+ * Gets Program Details videos so it can be used in block.
+ */
+function get_sab_faceted_nav_product_list_markup() {
+
+    $product_list = get_sab_product_list_current_product_list();
+
+    $markup = "";
+
+    if(isset($product_list->plid) && $product_list->plid > 0){
+
+        $markup .='<button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".product-list-faceted-navbar">';
+        $markup .='<span class="sr-only">Toggle navigation</span>';
+        $markup .='<span class="icon-bar"></span>';
+        $markup .='<span class="icon-bar"></span>';
+        $markup .='<span class="icon-bar"></span>';
+        $markup .='</button>';
+        $markup .='<nav class="product-list-faceted-navbar navbar navbar-default faceted-navbar">';
+        $markup .='<div class="container-fluid faceted-navbar-inner text-center clearfix">';
+        $markup .='<div class="faceted-navbar-container" id="bs-example-navbar-collapse-1">';
+        $markup .='</div>';
+        $markup .='</div>';
+        $markup .='</nav>';
+
+        return $markup;
+
+    }else{
+    
+        return null;
+
+    }
+
+}
+
+
+/**
+ * Gets Program Details videos so it can be used in block.
+ */
+function get_sab_faceted_nav_product_list_markup_ajax($plid) {
+
+     if(is_numeric($plid)){
+
+         if(module_exists('sab_product_list') && function_exists('get_product_list_info_by_plid')){
+             
+             $product_list = get_product_list_info_by_plid($plid);
+
+             if(isset($product_list->plid) && $product_list->plid > 0 && isset($product_list->listing_options)) {
+
+                 _add_product_list_query_string_data($product_list);
+                 set_sab_product_list_current_product_list($product_list); //Needs to be set so Other functions can use get_sab_product_list_current_product_list()
+                 set_sab_product_list_options($product_list->listing_options);
+
+                 $product_list_options = $product_list->listing_options;
+
+                 $output = "";
+
+                 $cid = request_uri();
+
+                 #change to TRUE.
+                 $caching_on = TRUE;
+
+                 $start_time = date('s') . substr((string)microtime(), 1, 7);
+
+                 if(variable_get('sab_faceted_nav_caching') != NULL){
+                     
+                     $caching_on = variable_get('sab_faceted_nav_caching');
+
+                 }
+                 if ($caching_on && $cache = cache_get($cid, 'cache_sab_faceted_nav')) {
+                     
+                     $output = $cache->data;
+                 }
+                 else{
+
+                     $markup = "";
+
+                     try{
+
+                         $program_type_term = null;
+                         $option_terms = get_sab_faceted_nav_product_list_options_term($product_list_options);
+
+                         if(!empty($option_terms)){
+
+                             foreach($option_terms as $k =>$v){
+                                 if($v->vocabulary_machine_name == 'program_types'){
+                                     $program_type_term  = $v;
+                                     break;
+                                 }
+                             }
+
+                         }
+                         
+                         if(!is_null($program_type_term)){
+                             $filters_by_ptype = array();
+                             $filters_by_ptype['program_types'] = array(6438,6441,6439,6442,6440,6437);
+                             $filters_by_ptype['levels'] = array(6437, 6438);
+                             $filters_by_ptype['countries'] = array(6438,6441,6439,6442,6440,6437);
+                             $filters_by_ptype['cities'] = array(6438,6441,6439,6442,6440,6437);
+                             $filters_by_ptype['terms'] = array(6438,6441);            
+                             $filters_by_ptype['durations'] = array(6439,6442,6440);
+                             $filters_by_ptype['work_types'] = array(6439,6441);
+                             //$filters_by_ptype['teach_abroad_types'] = array(6440);
+                             $filters_by_ptype['intensive_languages'] = array(6442);
+                             $filters_by_ptype['specialties']= array(6438,6437);
+                             $filters_by_ptype['placement_audiences'] = array(6440);
+
+                             $markup .= '<nav>';
+                             $markup .= '<div class="faceted-navbar-inner-html">';
+
+                             $items = array();
+
+                             $relations = $product_list_options;
+                             
+                             $use_matching = variable_get('eddy_core_matching_engine_is_enabled');
+
+                             $all_me_available = get_sab_faceted_nav_me_filter($relations, "all");
+
+                             foreach($filters_by_ptype as $filter_name => $ptypes){
+
+                                 $me_available = $all_me_available;
+
+                                 if(in_array($program_type_term->tid, $ptypes)){
+                                     $options = array(
+                                         'taxonomy_term_machine_name' => $filter_name,
+                                         'current_product_list' => $option_terms,//$results->CurrentProductList,
+                                         'available_filters' => array()
+                                         );
+
+                                     switch($filter_name){
+
+                                         case "program_types":
+
+                                             //faceted nav of ME response doesn't return program type, so program type no need to filter by ME
+                                             if($use_matching){
+                                                 
+                                                 $type_cid = "program_type:";
+
+                                                 if ($cache = cache_get($type_cid, 'cache_sab_faceted_nav')) {
+                                                     
+                                                     $options['available_filters'] = $cache->data;
+
+                                                 }
+                                                 else{
+                                                     
+                                                     $isid_term = array();
+
+                                                     $taxonomy_term = get_sab_faceted_nav_terms('levels');
+                                                     foreach($taxonomy_term as $term){
+                                                         $isid_term[]= array(
+                                                             'ProgramLevelId' => $term->field_external_id['und'][0]['value'],
+                                                             'ProgramLevelName' => $term->name,
+                                                         );
+                                                     }
+
+                                                     $options['available_filters'] = $isid_term; 
+
+                                                     cache_set($type_cid, $options['available_filters'], "cache_sab_faceted_nav");
+                                                     
+                                                 }
+
+                                             }
+
+                                             break;
+
+                                         case "levels":
+
+                                             if($use_matching){
+
+                                                 //$select_relations = sab_faceted_nav_include_relavant_relations($relations, array("type"));
+
+                                                 $select_relations = $relations;
+
+                                                 $level_cid = "level:" . sab_faceted_nav_implode_cache_key($select_relations);
+
+                                                 if ($cache = cache_get($level_cid, 'cache_sab_faceted_nav')) {
+                                                     
+                                                     $options['available_filters'] = $cache->data;
+
+                                                 }
+                                                 else{
+
+                                                     if(in_array("level", array_keys($relations))){
+
+                                                         $me_available = get_sab_faceted_nav_me_filter($select_relations, "level");
+                                                         
+                                                     }
+
+                                                     if(isset($me_available->GetFacetedNavigationResult) && isset($me_available->GetFacetedNavigationResult->ProgramLevels))
+                                                         $options['available_filters'] = $me_available->GetFacetedNavigationResult->ProgramLevels;
+
+                                                     cache_set($level_cid, $options['available_filters'], "cache_sab_faceted_nav");
+
+                                                 }
+                                             }
+
+                                             break;
+                                         case "countries":
+                                             
+                                             if($use_matching){ 
+
+                                                 //$select_relations = sab_faceted_nav_include_relavant_relations($relations, array("type", "level"));
+                                                 
+                                                 $select_relations = $relations;
+
+                                                 $country_cid = "country:" . sab_faceted_nav_implode_cache_key($select_relations);
+
+                                                 $state_cid = "state:" . sab_faceted_nav_implode_cache_key($select_relations);
+
+                                                 if ($cache = cache_get($country_cid, 'cache_sab_faceted_nav') && $cache = cache_get($state_cid, 'cache_sab_faceted_nav')) {
+
+                                                     if($cache = cache_get($country_cid, 'cache_sab_faceted_nav'))
+                                                         $options['available_filters'] = $cache->data;
+                                                     
+                                                     if($cache = cache_get($state_cid, 'cache_sab_faceted_nav'))
+                                                         $options['available_sub_filters'] = $cache->data;
+                                                     
+                                                 }
+                                                 else{
+                                                     
+                                                     if(in_array("country", array_keys($relations))){
+
+                                                         $me_available = get_sab_faceted_nav_me_filter($select_relations, "country");
+                                                         
+                                                     }elseif(in_array("state", array_keys($relations))){
+                                                         $me_available = get_sab_faceted_nav_me_filter($select_relations, "state");
+                                                     }
+                                                     
+                                                     $available_sub_filters = array();
+                                                     $available_filters = array();
+                                                     if(isset($me_available->GetFacetedNavigationResult) && isset($me_available->GetFacetedNavigationResult->Countries))
+                                                         $available_filters = $me_available->GetFacetedNavigationResult->Countries;
+
+                                                     if(isset($me_available->GetFacetedNavigationResult) && isset($me_available->GetFacetedNavigationResult->States))
+                                                         $available_sub_filters = $me_available->GetFacetedNavigationResult->States;
+
+                                                     $options['available_filters'] = $available_filters;
+                                                     $options['available_sub_filters'] = $available_sub_filters;
+                                                     
+                                                     cache_set($country_cid, $options['available_filters'], "cache_sab_faceted_nav");
+
+                                                     cache_set($state_cid, $options['available_sub_filters'], "cache_sab_faceted_nav");
+
+                                                 }
+
+                                                 
+                                             }
+                                             break;
+
+                                         case "cities":
+                                             
+                                             if((array_key_exists('country', $product_list_options) && !empty($product_list_options['country'])) || (array_key_exists('state', $product_list_options) && !empty($product_list_options['state']))){
+                                                 
+                                                 if($use_matching){
+
+                                                     //$select_relations = sab_faceted_nav_include_relavant_relations($relations, array("type", "level", "country"));
+
+                                                     $select_relations = $relations;
+
+                                                     $city_cid = "city:" . sab_faceted_nav_implode_cache_key($select_relations);
+
+                                                     if ($cache = cache_get($city_cid, 'cache_sab_faceted_nav')) {
+                                                         
+                                                         $options['available_filters'] = $cache->data;
+
+                                                     }
+                                                     else{
+
+                                                         if(in_array("city", array_keys($relations))){
+
+                                                             $me_available = get_sab_faceted_nav_me_filter($select_relations, "city");
+
+                                                         }
+
+                                                         if(isset($me_available->GetFacetedNavigationResult) && isset($me_available->GetFacetedNavigationResult->Cities))
+                                                             $options['available_filters'] = $me_available->GetFacetedNavigationResult->Cities;
+
+                                                         cache_set($city_cid, $options['available_filters'], "cache_sab_faceted_nav");
+
+                                                     }
+
+                                                 }
+
+                                             }
+                                             break;
+
+                                         case "terms":
+
+                                             if($use_matching){
+
+                                                 $select_relations = $relations;
+
+                                                 $term_cid = "terms:" . sab_faceted_nav_implode_cache_key($select_relations);
+
+                                                 if ($cache = cache_get($term_cid, 'cache_sab_faceted_nav')) {
+                                                     
+                                                     $options['available_filters'] = $cache->data;
+
+                                                 }
+                                                 else{
+
+                                                     if(in_array("term", array_keys($relations))){
+
+                                                         $me_available = get_sab_faceted_nav_me_filter($select_relations, "term");
+
+                                                     }
+
+                                                     if(isset($me_available->GetFacetedNavigationResult) && isset($me_available->GetFacetedNavigationResult->TermList))
+                                                         $options['available_filters'] = $me_available->GetFacetedNavigationResult->TermList;
+
+                                                     cache_set($term_cid, $options['available_filters'], "cache_sab_faceted_nav");
+
+                                                 }
+
+                                             }
+                                             
+                                             break;
+
+                                         case "durations":
+
+                                             if($use_matching){
+
+                                                 $select_relations = $relations;
+
+                                                 $durations_cid = "durations:" . sab_faceted_nav_implode_cache_key($select_relations);
+
+                                                 if ($cache = cache_get($durations_cid, 'cache_sab_faceted_nav')) {
+                                                     
+                                                     $options['available_filters'] = $cache->data;
+
+                                                 }
+                                                 else{
+
+                                                     if(in_array("duration", array_keys($relations))){
+
+                                                         $me_available = get_sab_faceted_nav_me_filter($select_relations, "duration");
+
+                                                     }
+
+                                                     if(isset($me_available->GetFacetedNavigationResult) && isset($me_available->GetFacetedNavigationResult->DurationList))
+                                                         $options['available_filters'] = $me_available->GetFacetedNavigationResult->DurationList;
+
+                                                     cache_set($durations_cid, $options['available_filters'], "cache_sab_faceted_nav");
+
+                                                 }
+
+                                             }
+                                             break;
+
+                                         case "work_types":
+
+                                             if($use_matching){
+
+                                                 $select_relations = $relations;
+
+                                                 $work_types_cid = "work_types:" . sab_faceted_nav_implode_cache_key($select_relations);
+
+                                                 if ($cache = cache_get($work_types_cid, 'cache_sab_faceted_nav')) {
+                                                     
+                                                     $options['available_filters'] = $cache->data;
+
+                                                 }
+                                                 else{
+
+                                                     if(in_array("work_type", array_keys($relations))){
+
+                                                         $me_available = get_sab_faceted_nav_me_filter($select_relations, "work_type");
+
+                                                     }
+
+                                                     if(isset($me_available->GetFacetedNavigationResult) && isset($me_available->GetFacetedNavigationResult->WorkTypeList))
+                                                         $options['available_filters'] = $me_available->GetFacetedNavigationResult->WorkTypeList;
+
+                                                     cache_set($work_types_cid, $options['available_filters'], "cache_sab_faceted_nav");
+
+                                                 }
+
+                                             }
+                                             
+                                             break;
+
+                                         case "intensive_languages":
+
+                                             if($use_matching){
+
+                                                 $select_relations = $relations;
+
+                                                 $intensive_languages_cid = "intensive_languages:" . sab_faceted_nav_implode_cache_key($select_relations);
+
+                                                 if ($cache = cache_get($intensive_languages_cid, 'cache_sab_faceted_nav')) {
+                                                     
+                                                     $options['available_filters'] = $cache->data;
+
+                                                 }
+                                                 else{
+
+                                                     if(in_array("language", array_keys($relations))){
+
+                                                         $me_available = get_sab_faceted_nav_me_filter($select_relations, "language");
+
+                                                     }
+
+                                                     if(isset($me_available->GetFacetedNavigationResult) && isset($me_available->GetFacetedNavigationResult->LanguageList))
+                                                         $options['available_filters'] = $me_available->GetFacetedNavigationResult->LanguageList;
+
+                                                     cache_set($intensive_languages_cid, $options['available_filters'], "cache_sab_faceted_nav");
+
+                                                 }
+
+                                             }
+                                             break;
+
+                                         case "specialties":
+
+                                             if($use_matching){
+
+                                                 $select_relations = $relations;
+
+                                                 $specialties_cid = "specialties:" . sab_faceted_nav_implode_cache_key($select_relations);
+
+                                                 if ($cache = cache_get($specialties_cid, 'cache_sab_faceted_nav')) {
+                                                     
+                                                     $options['available_filters'] = $cache->data;
+
+                                                 }
+                                                 else{
+
+                                                     if(in_array("specialty", array_keys($relations))){
+
+                                                         $me_available = get_sab_faceted_nav_me_filter($select_relations, "specialty");
+
+                                                     }
+                                                     
+                                                     if(isset($me_available->GetFacetedNavigationResult) && isset($me_available->GetFacetedNavigationResult->Specialties))
+                                                         $options['available_filters'] = $me_available->GetFacetedNavigationResult->Specialties;
+
+                                                     cache_set($specialties_cid, $options['available_filters'], "cache_sab_faceted_nav");
+
+                                                 }
+
+                                             }
+                                             break;
+
+                                         case "placement_audiences":
+
+                                             if($use_matching){
+
+                                                 $select_relations = $relations;
+
+                                                 $placement_audiences_cid = "placement_audiences:" . sab_faceted_nav_implode_cache_key($select_relations);
+
+                                                 if ($cache = cache_get($placement_audiences_cid, 'cache_sab_faceted_nav')) {
+                                                     
+                                                     $options['available_filters'] = $cache->data;
+
+                                                 }
+                                                 else{
+
+                                                     if(in_array("placement_audience", array_keys($relations))){
+
+                                                         $me_available = get_sab_faceted_nav_me_filter($select_relations, "placement_audience");
+
+                                                     }
+                                                     
+                                                     if(isset($me_available->GetFacetedNavigationResult) && isset($me_available->GetFacetedNavigationResult->PlacementAudienceList))
+                                                         $options['available_filters'] = $me_available->GetFacetedNavigationResult->PlacementAudienceList;
+
+                                                     cache_set($placement_audiences_cid, $options['available_filters'], "cache_sab_faceted_nav");
+
+                                                 }
+
+                                             }
+                                             break;
+                                         
+                                     }
+                                     $filter = get_sab_faceted_nav_drop_down_links_markup($options);
+
+                                     if($filter!=''){
+
+                                         $items[] = array(
+                                             'data' => $filter,
+                                             'class'=>array('dropdown'),  
+                                             'id' => $filter_name
+                                         );
+                                     }
+
+                                 }
+                             }
+
+                             $markup .= theme_item_list(
+                                     array(
+                                         'title' => '',
+                                         'items' => (count($items)>=2)?array_slice($items, 0, 2):$items, 
+                                         'type' => 'ul',
+                                         'attributes' => array('class' => "nav navbar-nav first"),
+                                     )
+                                 );
+                             if(count($items)>2){
+                                 $markup .= theme_item_list(
+                                     array(
+                                         'title' => '',
+                                         'items' => array_slice($items, 2), 
+                                         'type' => 'ul',
+                                         'attributes' => array('class' => "nav navbar-nav second"),
+                                     )
+                                 );
+                             }
+
+                             $markup .='</div>';
+                             $markup .='</nav>';
+                         }
+                     }
+                     catch(Exception $e){
+                         dpm($e);
+                     }
+
+                     $output = $markup;
+
+                     cache_set($cid, $output, "cache_sab_faceted_nav");
+
+                 }
+
+                 $end_time = date('s') . substr((string)microtime(), 1, 7);
+
+                 $requestTime = ($end_time - $start_time);
+
+                 //dpm($requestTime);
+                 
+                 print $output;
+                 drupal_exit();
+
+             }
+
+        }
+
+    }else{
+    
+        print "An Invalid Argument has been suplied.";
+        drupal_exit();
+    
+    }
+
+    print "";
+    drupal_exit();
+
+}
+
+
+
+
+function sab_faceted_nav_include_relavant_relations($options, $include){
+
+    foreach($options as $k => $v){
+        
+        if(!in_array($k, $include)){
+            unset($options[$k]);
+        }
+        
+    }
+
+    return $options;
+
+}
+
+
+function sab_faceted_nav_implode_cache_key($options){
+    
+    $output = "";
+
+    foreach($options as $key => $value){
+        
+        $output .= $key;
+
+        $total = count($value);
+
+        $count = 1;
+
+        foreach($value as $k => $v){
+
+            $output .= "_$v";
+
+            if($count == $total){
+                
+                $output .= "_";
+
+            }else{
+                
+                $output .= ","; 
+                
+            }
+
+            $count++;
+
+        }
+
+    }
+
+    return rtrim($output, '_');
+
+}
+
+/**
+ * Gets List top faceted navigaition so it can be used in block.
+ */
+function get_sab_faceted_nav_home_form($form, &$form_state) {
+
+    $levels = array();
+    $countries = array();
+    $states = array();
+    //$termlists = array();
+    if(variable_get('eddy_core_matching_engine_is_enabled')){
+        $results = sab_faceted_nav_get_faceted_nav_results();
+        if(isset($results->GetFacetedNavigationResult)){
+            if(isset($results->GetFacetedNavigationResult->ProgramLevels))
+                $levels = $results->GetFacetedNavigationResult->ProgramLevels;
+
+            if(isset($results->GetFacetedNavigationResult->Countries))
+                $countries = $results->GetFacetedNavigationResult->Countries;
+
+            if(isset($results->GetFacetedNavigationResult->States))
+                $states = $results->GetFacetedNavigationResult->States;
+
+            //if(isset($results->GetFacetedNavigationResult->TermList))
+            //    $termlists = $results->GetFacetedNavigationResult->TermList;
+        }
+    }
+    $params['levels'] = array(        
+        'select_display_text' => '{choose level}',
+        'taxonomy_term_machine_name' => 'levels',
+        'available_filters' => $levels,
+        
+    );
+    $params['user-country'] = array(
+        'select_display_text' => '{choose country}',
+        'taxonomy_term_machine_name' => 'countries',
+        'available_filters' => $countries,        
+        'available_sub_filters' => $states,    
+    );
+    $params['type'] = array(
+        'select_display_text' => '{choose program type}',
+        'taxonomy_term_machine_name' => 'program_types',
+        'available_filters' => '',
+        //'available_sub_filters' => $termlists,    
+    );
+    $params['country'] = array(
+        'select_display_text' => '{choose country}',
+        'taxonomy_term_machine_name' => 'countries',
+        'available_filters' => $countries,   
+        'available_sub_filters' => $states,    
+    );
+
+    $form['faceted_nav'] = array(
+    '#prefix' => '<div id="faceted_nav_form" class="row clearfix faceted-navbar content">',
+    '#suffix' => '</div>',
+    );
+    foreach($params as $key => $param){
+        
+        $form['faceted_nav'][$key] = array(            
+          '#type' => 'select',
+          '#options' => sab_faceted_nav_item_select($param),
+          '#default_value' => '0',
+          '#required' => TRUE,
+          '#prefix' => '<div class="faceted-nav-select-wrap ' . $key . '">',
+          '#suffix' => '<input tabindex="-1" type="text" class="faceted-nav-text" readonly><i class="fa fa-angle-down"></i></div>',
+        );
+        
+        switch($key){
+            case "levels":                    
+                $form['faceted_nav'][$key]['#prefix'] = "<div class=\"hidden-xs\"><span class=\"$key\">I am a</span>" . $form['faceted_nav'][$key]['#prefix'];
+                $form['faceted_nav'][$key]['#ajax'] = array(
+                  'callback' => 'change_facet_nav_country_options',
+                  'wrapper' => 'country-wrapper',
+                );
+                break;
+
+            case "user-country":
+                $form['faceted_nav'][$key]['#prefix'] = "<span class=\"$key\"> student from </span>" . $form['faceted_nav'][$key]['#prefix'];  
+                $form['faceted_nav'][$key]['#default_value'] = 7012;//United State tid
+                $form['faceted_nav'][$key]['#suffix'] .= '</div>';
+                break;
+            
+            case "type":
+                $form['faceted_nav'][$key]['#prefix'] = "<div><span class=\"hidden-xs $key\">and </span><span class=\"$key\">I want to </span>" . $form['faceted_nav'][$key]['#prefix'];  
+                $form['faceted_nav'][$key]['#ajax'] = array(
+                  'callback' => 'change_facet_nav_country_options',
+                  'wrapper' => 'country-wrapper',
+                );
+                break;
+
+            case "country":
+                $form['faceted_nav'][$key]['#prefix'] = "<div id=\"country-wrapper\"><span class=\"$key\"> in </span>" . $form['faceted_nav'][$key]['#prefix'];  
+                $form['faceted_nav'][$key]['#suffix'] .= '</div></div>';
+                break;
+        }
+    }
+    $form['action_url'] = array(
+        '#type' => 'hidden',
+        '#prefix' => '<div id="action_url_wrapper">',
+        '#suffix' => '</div>',
+        );    
+    $form['actions']['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('Find Program'),
+        '#attributes' => array('class' => array('button-link')),
+        '#submit' => array('facet_nav_home_submit'),
+        );
+    return $form;
+
+}
+
+function facet_nav_home_submit($form, &$form_state) {
+
+    $form_querys = $form_state['values'];
+    
+    $url_parameters = array();
+
+    $allow_qs_levels_pending = array(6437);
+
+    //only append allowed query parameter to url. the value of query parameter will pass safe name instead of tid
+    if(in_array($form_querys['type'], $allow_qs_levels_pending)){
+        $allowed_qs = sab_listing_get_allowed_query_strings();   
+        foreach($allowed_qs as $qname => $safevaluenames){
+            foreach($form_querys as $fqname => $fqvalue){     
+
+                if($fqname == $qname){
+                    foreach($safevaluenames as $safename => $safevalue){
+                        if($safevalue->entity_id == $fqvalue){
+                            $url_parameters['query'][$fqname] = $safename;  
+                            break;
+                        }
+                        
+                    }
+
+                }
+                
+            }
+        }
+    }
+
+    $level_tid = 0;
+
+    if($form_querys['type'] == '0'){
+        $form_querys['type'] = '6438';
+    }
+    
+    if($form_querys['type'] == '6438'){ //study abroad
+        $level_tid = 6766; //undergraduate
+        if(array_key_exists('levels', $form_querys) && $form_querys['levels']!=0){
+            $level_tid = $form_querys['levels'];
+        }
+    }
+    
+    
+    $list_filter = array(
+      'program_type' => $form_querys['type'],//6438,
+      'level' => $level_tid,//6438 -- study abroad tid. only pass level when it's study abroad
+      'country' => $form_querys['country'],//0,
+      'specialty' => 0,
+      'results_count' => 1,
+    );   
+    
+    
+    // program type is full degree, level is pass to product list page as a query string
+    // for other program type, level won't be a matter so will not be passed
+    
+    $product_list_result = sab_product_list_get_list($list_filter);
+    
+    if(isset($product_list_result[0])){       
+        $redirect = product_list_url($product_list_result[0]);
+    }else{
+        //redirect to the same page if product list page doesn't exist
+        $redirect = $form_state['complete form']['#action'];
+    }
+
+    $form_state['redirect'] = array($redirect, $url_parameters);
+}
+
+function change_facet_nav_country_options($form, $form_state){
+
+    $form_querys = $form_state['values'];
+
+    $countries = array();
+    $states = array();
+
+    $results = sab_faceted_nav_get_faceted_nav_results($form_querys);
+
+    if(isset($results->GetFacetedNavigationResult->Countries))
+        $countries = $results->GetFacetedNavigationResult->Countries;
+
+    if(isset($results->GetFacetedNavigationResult->States))
+        $states = $results->GetFacetedNavigationResult->States;
+
+    $param = array(
+        'select_display_text' => '{choose country}',
+        'taxonomy_term_machine_name' => 'countries',
+        'available_filters' => $countries,        
+        'available_sub_filters' => $states,   
+    );
+
+    $options = sab_faceted_nav_item_select($param);
+
+    $form['faceted_nav']['country']['#options'] = $options;
+    return $form['faceted_nav']['country'];
+}
+
+/*
+ * 
+ */
+function get_sab_faceted_nav_general_form($form, &$form_state) {
+    
+    $countries = array();
+    $states = array();
+    //$termlists = array();
+
+    if(variable_get('eddy_core_matching_engine_is_enabled')){
+        $results = sab_faceted_nav_get_faceted_nav_results();
+        if(isset($results->GetFacetedNavigationResult->Countries))
+            $countries = $results->GetFacetedNavigationResult->Countries;
+
+        if(isset($results->GetFacetedNavigationResult->States))
+            $states = $results->GetFacetedNavigationResult->States;
+
+        //if(isset($results->GetFacetedNavigationResult->TermList))
+        //    $termlists = $results->GetFacetedNavigationResult->TermList;
+    }
+
+    $params['type'] = array(
+        'select_display_text' => '{choose program type}',
+        'taxonomy_term_machine_name' => 'program_types',
+        'available_filters' => '',
+        //'available_sub_filters' => $termlists,   
+    );
+    $params['country'] = array(
+        'select_display_text' => '{choose country}',
+        'taxonomy_term_machine_name' => 'countries',
+        'available_filters' => $countries,    
+        'available_sub_filters' => $states, 
+    );
+
+    $form['faceted_nav'] = array(
+    '#prefix' => '<div id="faceted_nav_form" class="row clearfix faceted-navbar content">',
+    '#suffix' => '</div>',
+    );
+    foreach($params as $key => $param){
+
+        $form['faceted_nav'][$key] = array(            
+          '#type' => 'select',
+          '#options' => sab_faceted_nav_item_select($param),
+          '#default_value' => '0',
+          '#required' => TRUE,
+          '#prefix' => '<div class="faceted-nav-select-wrap ' . $key . '">',
+          '#suffix' => '<input tabindex="-1" type="text" class="faceted-nav-text" readonly><i class="fa fa-angle-down"></i></div>',
+        );
+        
+        switch($key){
+            
+            case "type":
+                $form['faceted_nav'][$key]['#prefix'] = "<b>Help me find a program.</b> <span>I want to</span>" . $form['faceted_nav'][$key]['#prefix'];  
+                $form['faceted_nav'][$key]['#ajax'] = array(
+                  'callback' => 'change_facet_nav_country_options',
+                  'wrapper' => 'country-wrapper',
+                );
+                break;
+
+            case "country":
+                $form['faceted_nav'][$key]['#prefix'] = "<div id=\"country-wrapper\"><span class=\"$key\"> in </span>" . $form['faceted_nav'][$key]['#prefix'];  
+                $form['faceted_nav'][$key]['#suffix'] .= '</div>';
+                break;
+        }
+    }
+    
+    $form['actions']['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('SEARCH'),
+        '#attributes' => array('class' => array('button-link')),
+        '#submit' => array('facet_nav_home_submit'),
+        );
+    return $form;
+
+}
+
+
+
+function sab_faceted_nav_item_array($params){
+
+    $params += array(
+        'select_display_text' =>'',
+        'taxonomy_term_machine_name' => '',
+        'available_filters' => array(),
+        'current_product_list' => null,
+    );
+
+    $options = array();
+    try{
+        //$selected_term = null;
+        //if(!is_null($params['current_product_list'])){
+        //    foreach($params['current_product_list']->relationships_terms as $k => $v){
+        //        if($v->vocabulary_machine_name == $params['taxonomy_term_machine_name']){
+        //            $selected_term = $v;
+        //            break;
+        //        }
+        //    }
+        //}
+        
+        //$field_name_string = $params['form_name'].'_'.$params['field_name'].'_'.$params['taxonomy_term_machine_name'];
+        $taxonomy_terms = get_sab_faceted_nav_terms($params['taxonomy_term_machine_name']);
+        //if($params['taxonomy_term_machine_name'] == 'program_types'){
+        //    $terms = get_sab_faceted_nav_terms('terms');
+        //    $taxonomy_terms = array_merge($taxonomy_terms, $terms);
+        //}
+
+        if(count($taxonomy_terms) > 0){
+            $updated_terms = array();
+
+            //faceted nav of ME response doesn't return program type, so program type no need to filter by ME
+            if(variable_get('eddy_core_matching_engine_is_enabled') && $params['taxonomy_term_machine_name'] != 'program_types'){
+                
+                $available_filters = $params['available_filters'];
+                
+                if($params['taxonomy_term_machine_name'] == 'countries'){
+                    $available_state_filters = array();
+                    if(array_key_exists('available_sub_filters',$params))
+                        $available_state_filters = $params['available_sub_filters'];
+                    $updated_terms = get_sab_faceted_nav_filter_available_country_terms($available_filters, $available_state_filters, $taxonomy_terms);       
+
+                    
+                }
+                else{
+
+                    $updated_terms = get_sab_faceted_nav_filter_available_terms($params['taxonomy_term_machine_name'],$taxonomy_terms, $available_filters);
+                }
+            }else{
+                
+                //if(!variable_get('eddy_core_matching_engine_is_enabled'))
+                $updated_terms = $taxonomy_terms;
+                //else{
+                //    if(array_key_exists('available_sub_filters',$params)){
+                //        $updated_terms = get_sab_faceted_nav_filter_available_terms_terms($taxonomy_terms, $params['available_sub_filters']);
+                //    }
+                
+                //}
+            }
+
+            if($params['taxonomy_term_machine_name'] == 'countries'){
+                $all_countries = $updated_terms;
+
+                $popular_countries = array();
+                if(!empty($all_countries)){
+                    
+                    $index=0;   
+
+                    $group_query = new stdClass;
+                    
+                    foreach($all_countries as $tid=>$term){
+                        if(isset($term->field_is_popular) && !empty($term->field_is_popular) && $term->field_is_popular[LANGUAGE_NONE][0]['value'] == 1){
+                            if($index == 0){
+                                $index++;                                                           
+                                $group_query->name = "--Popular Countries--";
+                                $group_query->tid = "-1";
+                            }
+                            $popular_countries[$tid] = $all_countries[$tid];
+                            unset($all_countries[$tid]);
+                        }
+                        
+                    }
+                    
+                    uasort($popular_countries, "_compare_terms_name");
+                    
+                    if(isset($group_query->name)){
+                        $popular_countries = array_replace(array(1=>$group_query),$popular_countries);
+                    }
+
+                    //add "All Countries"
+                    $group_query = new stdClass;
+                    $group_query->name = "--All Countries--";
+                    $group_query->tid = "-2";
+                    uasort($all_countries, "_compare_terms_name");
+                    $all_countries = array_replace(array(2=>$group_query), $all_countries);
+                    
+                }
+                
+                $updated_terms = array_replace($popular_countries,$all_countries);
+                
+                drupal_alter("remove_parent_country", $updated_terms);   
+            }
+            if($params['taxonomy_term_machine_name'] == 'levels'){
+
+                drupal_alter('special_faceted_nav_level', $updated_terms);
+            }
+            //if($params['taxonomy_term_machine_name'] == 'program_types'){
+
+            //    drupal_alter('extra_faceted_nav_type', $updated_terms);
+            //}
+
+            $options = array();
+            $group_name = "";    
+            
+            foreach($updated_terms as $k => $v){
+                //create group optgroup options for DD
+                if($v->tid < 0){
+                    $group_name = $v->name;
+                    $options[$group_name] = array();
+                }                                
+                else{
+                    $options[$group_name][$v->tid] = $v->name;//.='<option value="'.$v->tid.'" selected="selected" >'.$v->name.'</option>';
+                }                
+            }
+            //remove group for group_name=""
+            if(!empty($options) && key($options)==""){
+                $options = $options[key($options)];
+            }
+
+        }
+
+    }
+    catch(Exception $e){
+        dpm($e);
+    }
+
+    return $options;
+}
+
+//function get_sab_faceted_nav_filter_available_terms_terms($taxonomy_terms, $available_terms){
+
+//    $available_terms = array_flip($available_terms);
+//    foreach($taxonomy_terms as $k => $term){
+//        if(isset($term->vocabulary_machine_name) && $term->vocabulary_machine_name=='terms')
+//            if(isset($term->field_external_id) && !empty($term->field_external_id))
+//                if(!array_key_exists($term->field_external_id[LANGUAGE_NONE][0]['value'], $available_terms))
+//                    unset($taxonomy_terms[$k]);
+//    }
+
+//    return $taxonomy_terms;
+//}
+function sab_faceted_nav_special_faceted_nav_level_alter(&$items){
+    
+    $current_filters = get_sab_product_list_options();
+
+    if(!isset($current_filters['type']) || (isset($current_filters['type']) && !in_array(1, $current_filters['type']))){
+
+        foreach($items as $key => $object){
+            //Undergraduate, Graduate, Gap Year, High School
+            if($key!= '0' && $key != '6766' && $key!='6767' && $key != '6768'  && $key !='6769'){
+                unset($items[$key]);
+            }
+        }
+
+    }
+    
+    return $items;
+}
+/**
+ * Gets List top faceted navigaition so it can be used in block.
+ */
+function get_sab_faceted_nav_drop_down_links_markup($options) {
+    
+    $markup = "";
+    
+    try{
+        //$field_name_string = $form_name.'_'.$field_name.'_'.$taxonomy_term_machine_name;
+        $taxonomy_terms = array();
+        switch($options['taxonomy_term_machine_name']){
+            case 'cities':
+
+                $taxonomy_terms = get_sab_faceted_nav_city_terms($options['current_product_list'],$options['taxonomy_term_machine_name']);
+
+                //if(count($taxonomy_terms) >50){
+                //    $taxonomy_terms = array_slice($taxonomy_terms, 0, 20); //too many, get 10 for now
+                //}
+                //dpm($taxonomy_terms);
+                break;
+            default:
+                $taxonomy_terms = get_sab_faceted_nav_terms($options['taxonomy_term_machine_name']);                
+                break;
+        }
+
+        if(count($taxonomy_terms) > 0){
+            $updated_terms = array();
+
+            if(variable_get('eddy_core_matching_engine_is_enabled') && $options['taxonomy_term_machine_name']!='program_types'){
+                
+                $available_filters = $options['available_filters'];
+                
+                if($options['taxonomy_term_machine_name'] == 'countries'){
+                    $available_state_filters = array();
+                    if(array_key_exists('available_sub_filters',$options))
+                        $available_state_filters = $options['available_sub_filters'];
+                    $filtered_taxonomy_terms = get_sab_faceted_nav_filter_available_country_terms($available_filters, $available_state_filters, $taxonomy_terms);       
+                    
+                }else{
+                    $filtered_taxonomy_terms = get_sab_faceted_nav_filter_available_terms($options['taxonomy_term_machine_name'],$taxonomy_terms, $available_filters);
+
+                }
+
+                $updated_terms = _append_term_alias_by_bundle($options['current_product_list'],$options['taxonomy_term_machine_name'],$filtered_taxonomy_terms);
+                
+            }else{
+
+                $updated_terms = _append_term_alias_by_bundle($options['current_product_list'],$options['taxonomy_term_machine_name'],$taxonomy_terms);
+            }        
+
+            if($options['taxonomy_term_machine_name'] == 'countries'){
+                
+                drupal_alter("remove_parent_country", $updated_terms);   
+            }
+            if($options['taxonomy_term_machine_name'] == 'levels'){
+                
+                drupal_alter('special_faceted_nav_level', $updated_terms);
+                
+            }
+            
+            if(count($updated_terms)>0){
+                
+                $array_values = array_values($updated_terms);
+
+                $root_term = $array_values[0];
+
+                unset($array_values[0]);
+                
+                sab_faceted_nav_add_remove_option($array_values, $options, $root_term);
+
+                if(!empty($array_values)){
+
+                    $root_item = $root_term->name.'<span class="caret"></span>';
+
+                    if(isset($root_term->url_alias) && array_key_exists('url', $root_term->url_alias)){
+
+                        $current_path = sab_faceted_nav_get_current_path();
+
+                        $markup .= l(
+                            $text = $root_item, 
+                            $path = (!empty($root_term->url_alias['url']) ? $root_term->url_alias['url'] : $current_path),
+                            $options = array(
+                                'attributes' => array(
+                                    'class'=>array('dropdown-toggle'), 
+                                    'data-toggle'=>array('dropdown'), 
+                                    'role'=>array('button'), 
+                                    'aria-haspopup'=>array('true'), 
+                                    'aria-expanded'=>array('false')), 
+                                'html' => TRUE));
+                    }else{
+                        $markup .= $root_item;
+                    }
+
+                    $items = array();
+                    foreach($array_values as $k => $v){
+                        if(isset($v->url_alias)){
+                            $alias = $v->url_alias;
+                            $items[] = array(
+                                        'data' => l(
+                                                $text = isset($v->name)?$v->name:'',
+                                                $path = (array_key_exists('url',$alias))?$alias['url']:'',
+                                                $options = array(
+                                                    'query' => (array_key_exists('query',$alias)) ? $alias['query']: array(),
+                                                )
+                                        ),
+                                        'class'=>array('text-left')
+                                    );
+                        }else{
+                            $items[] = array(
+                                        'data' => $text = $v->name,                                        
+                                        'class'=>array('text-left group')
+                                    );
+                        }
+                    }
+                    if(!empty($items)){
+                        $markup .= theme_item_list(
+                            array(
+                                'title' => '',
+                                'items' => $items, 
+                                'type' => 'ul',
+                                'attributes' => array('class' => "dropdown-menu"),
+                            )
+                        );
+                    }
+                }
+
+            }
+            
+        }
+
+    }
+    catch(Exception $e){
+
+        dpm($e);
+    }
+    return $markup;
+}
+
+
+
+/**
+ * Gets List top faceted navigaition so it can be used in block.
+ */
+function get_sab_faceted_nav_terms($bundle_name) {
+    $existing_terms = null;
+    try{
+        $query = new EntityFieldQuery();
+        $query->entityCondition('entity_type', 'taxonomy_term')
+                ->propertyOrderBy('weight')
+                ->entityCondition('bundle', $bundle_name);
+
+        $result = $query->execute();                
+        if (isset($result['taxonomy_term'])) {
+            $existing_tids = array_keys($result['taxonomy_term']);
+            $existing_terms = entity_load('taxonomy_term', $existing_tids);
+
+        }
+        
+
+    }
+    catch(Exception $e){
+        dpm($e);
+    }
+
+    return $existing_terms;
+}
+
+
+function sab_faceted_nav_remove_parent_country_alter(&$terms) {
+    $parent_tids = 0;
+    $start_time = date('s') . substr((string)microtime(), 1, 7);
+    if ($cached = cache_get('country_has_state')) {
+        $country_has_state = $cached->data;
+        
+        foreach($country_has_state as $tid=>$v){
+            if(array_key_exists($tid, $terms))
+                unset($terms[$tid]);
+        }
+    }else{
+        $query = db_select('taxonomy_term_hierarchy', 'h');
+        $query->join('taxonomy_term_data', 't', 't.tid = h.tid'); //JOIN node with users
+        $query->fields('h', array('parent'));
+        $query->condition('h.parent', 0, '!=');
+        $query->condition('t.vid', 28, '='); // countries vid=28
+        $query->groupBy('h.parent');
+        $pterms = $query->execute()->fetchAllAssoc('parent');
+
+        foreach ($pterms as $tid=>$v) {
+            
+            unset($terms[$tid]);
+            
+        }
+    }
+    
+    $end_time = date('s') . substr((string)microtime(), 1, 7);
+
+    $requestTime = ($end_time - $start_time);
+
+    //dpm($requestTime);
+    return $terms;
+}
+
+function get_sab_faceted_nav_filter_available_country_terms($me_countries, $me_states, $taxonomy_terms = array()) {
+
+    $start_time = date('s') . substr((string)microtime(), 1, 7);
+    
+    $filtered_terms = array();
+    
+    try{
+
+        foreach($taxonomy_terms as $k => $v){
+            $external_id = 0;
+            
+            if(isset($v->field_external_id[LANGUAGE_NONE][0]['value']))
+                $external_id = $v->field_external_id[LANGUAGE_NONE][0]['value'];
+            
+            foreach($me_countries as $ik => $iv){
+                
+
+                if($external_id !=0 && isset($iv->CountryId) && $external_id == $iv->CountryId)
+                    
+                    $filtered_terms[$k] = $v;
+                
+                
+            }
+            
+
+        };
+        $country_has_state = array();
+        if ($cached = cache_get('country_has_state')) {
+            $country_has_state = $cached->data;
+        }
+        else {
+            $trees = taxonomy_get_tree(28); //countries vid
+            foreach ($trees as $term) {
+
+                if (!empty($term->parents) && $term->parents[0] != 0) {                                 
+
+                    if(count($taxonomy_terms)>0 && array_key_exists($term->parents[0],$taxonomy_terms)){
+                        
+                        $country_has_state[$term->parents[0]] = $taxonomy_terms[$term->parents[0]];
+
+                    }else{
+                        $pterm = entity_load('taxonomy_term', array($term->parents[0]));
+
+                        if(!empty($pterm) && isset($pterm[key($pterm)]->field_external_id)){
+
+                            $country_has_state[$term->parents[0]] = $pterm[key($pterm)];
+                        }
+                    }
+
+                    $country_has_state[$term->parents[0]]->Children[$term->tid] = $term->tid;
+
+                }
+            }
+            
+            if(!empty($country_has_state)){
+                cache_set('country_has_state', $country_has_state);
+            }
+        }
+
+        foreach($country_has_state as $country_tid=>$country_term){
+
+            foreach($country_term->Children as $state_tid=>$statetid){
+                if(array_key_exists($state_tid, $taxonomy_terms)){
+
+                    $state_term = $taxonomy_terms[$state_tid];
+
+                    $external_id = 0;
+                    
+                    if(isset($state_term->field_external_id[LANGUAGE_NONE][0]['value']))
+                        $external_id = $state_term->field_external_id[LANGUAGE_NONE][0]['value'];
+
+                    foreach($me_states as $ik => $me_state){
+                        
+                        if($external_id !=0 && isset($me_state->StateId) && $external_id == $me_state->StateId){
+
+                            $filtered_terms[$state_tid] = $state_term;
+                            
+                        }
+
+                    }   
+                }
+            }
+
+        }   
+        
+    }
+    catch(Exception $e){
+        dpm($e);
+    }
+
+    $end_time = date('s') . substr((string)microtime(), 1, 7);
+
+    $requestTime = ($end_time - $start_time);
+
+    //dpm($requestTime);
+    
+    return $filtered_terms;
+
+}
+
+
+/**
+ * Gets List top faceted navigaition so it can be used in block.
+ */
+function get_sab_faceted_nav_city_terms($current_product_list,$bundle_name) {
+
+    $existing_terms = null;
+    try{
+        $country_term = null;
+        foreach($current_product_list as $k => $v){
+            if($v->vocabulary_machine_name == 'countries'){
+                $country_term  = $v;
+                break;
+            }
+        }
+
+        if(!is_null($country_term)){
+            $query = "SELECT tid,vid,name,e.bundle as vocabulary_machine_name, e.field_external_id_value,p.field_is_popular_value,s.field_safe_name_value FROM {taxonomy_term_data} t \n";
+            $query .= " join {field_data_field_external_id} e on t.tid = e.entity_id and e.entity_type = 'taxonomy_term' and e.bundle = 'cities'";
+            $query .= " join {field_data_field_safe_name} s on t.tid = s.entity_id and s.entity_type = 'taxonomy_term' and s.bundle = 'cities'";
+            $query .= " join {field_data_field_country_tr} c on t.tid = c.entity_id and c.entity_type = 'taxonomy_term' and c.bundle = 'cities'";
+            $query .= " join {field_data_field_is_popular} p on t.tid = p.entity_id and c.entity_type = 'taxonomy_term' and c.bundle = 'cities'";
+            $query .= " where c.field_country_tr_tid =$country_term->tid";
+            $city_terms = db_query($query)->fetchAllAssoc('tid');
+            
+            if(count($city_terms)>0){
+                $existing_terms = $city_terms;
+            }
+        }
+    }
+    catch(Exception $e){
+        dpm($e);
+    }
+
+    return $existing_terms;
+}
+
+
+
+/**
+ * Gets List top faceted navigaition so it can be used in block.
+ */
+function get_sab_faceted_nav_filter_available_terms($bundle_name,$taxonomy_terms,$available_filters) {
+
+    $filtered_terms = array();
+    try{
+        $available_state_filter_ids = array();
+        $cities = array();
+        foreach($taxonomy_terms as $k => $v){
+            $external_id = 0;
+            $city_term_name = '';
+            if($bundle_name == "cities" && isset($v->field_external_id_value)){
+                $external_id = $v->field_external_id_value;
+                $city_term_name = $v->name;
+
+            }else if(isset($v->field_external_id)){
+                $external_id = $v->field_external_id[LANGUAGE_NONE][0]['value'];
+            }
+            $available_filter_id = 0;
+            $available_filter_name = '';
+            foreach($available_filters as $ik => $iv){
+                switch($bundle_name){
+                    case "levels":                        
+                        $available_filter_id = $iv->ProgramLevelId;
+                        break;
+                    //case "program_types":
+                    //    //missing program types from me
+                    //    $available_filter_id = $iv;
+                    //    break;
+                    //case "countries":
+                    //    if(isset($iv->CountryId))
+                    //        $available_filter_id = $iv->CountryId;
+                    //    elseif(isset($iv->StateId))
+                    //        $available_state_filter_ids[$iv->StateId] = $iv->StateId;
+                    //    break;
+                    case "cities":
+                        //missing cities from me
+                        $available_filter_id = $iv->CityId;
+                        $available_filter_name = $iv->CityName;
+                        break;
+                    case "terms":
+                        //missing term from me
+                        $available_filter_id = $iv;
+                        break;
+                    case "durations":
+                        //missing term from me
+                        $available_filter_id = $iv;
+                        break;
+                    case "work_types":
+                        //missing term from me
+                        $available_filter_id = $iv;
+                        break;
+                    //case "teach_abroad_types":
+                    //    //missing term from me
+                    //    $available_filter_id = $iv;
+                    //    break;
+                    case "specialties":
+                        //missing term from me
+                        $available_filter_id = $iv->SpecialtyId;
+                        break;
+                    case "intensive_languages":
+                        //missing term from me
+                        $available_filter_id = $iv;
+                        break;
+                    case "placement_audiences":
+                        $available_filter_id = $iv;
+                        break;
+                }
+                
+                if($external_id !=0 && $external_id == $available_filter_id){
+                    $filtered_terms[$k] = $v;
+                }
+                
+            }
+            
+
+        };        
+
+    }
+    catch(Exception $e){
+        dpm($e);
+    }
+    if($bundle_name =='cities'){
+        uasort($filtered_terms, "_compare_terms_name");
+    }    
+    return $filtered_terms;
+}
+
+function _append_term_alias_by_bundle($current_product_list,$bundle_name,$terms)
+{
+    $updated_terms = array();
+    try{
+
+        $root_term = null;
+        $level_term = null;
+        $program_type_term = null;
+        $country_term = null;
+        $city_term = null;
+        $specialty_term = null;
+        $terms_term = null;
+        $audience_term = null;
+        $intensive_language_term = null;
+
+        foreach($current_product_list as $k => $v){
+            if($v->vocabulary_machine_name == $bundle_name){
+                $root_term = $v;
+                break;
+            }
+        }
+        
+        foreach($current_product_list as $k => $v){
+            if($v->vocabulary_machine_name == 'levels'){
+                $level_term  = $v;
+            }
+            if($v->vocabulary_machine_name == 'program_types'){
+                $program_type_term  = $v;
+            }
+            if($v->vocabulary_machine_name == 'countries'){
+                $country_term  = $v;
+            }
+            if($v->vocabulary_machine_name == 'cities'){
+                $city_term  = $v;
+            }
+            if($v->vocabulary_machine_name == 'specialties'){
+                $specialty_term  = $v;
+            }
+            if($v->vocabulary_machine_name == 'terms'){
+                $terms_term  = $v;
+            }
+            if($v->vocabulary_machine_name == 'placement_audiences'){
+                $audience_term  = $v;
+            }
+            if($v->vocabulary_machine_name == 'intensive_languages'){
+                $intensive_language_term  = $v;
+            }
+        }
+        
+        $options = array(
+            'bundle_name' => $bundle_name,
+            'root_term' => $root_term,
+            'terms' => $terms
+        );
+        
+        switch($bundle_name)
+        {
+            case 'program_types':
+                $options += array(
+                    'display_text' => 'Program Type',
+                    'country' => $country_term,
+                    'level' => $level_term,
+                    );
+                
+                $updated_terms = _append_terms_alias($options);
+                
+                break;
+            case 'levels':
+                $options += array(
+                    'qs_name' => 'level',      
+                    'display_text' => 'Level',
+                    'program_type' => $program_type_term,
+                    'country' => $country_term,
+                    'specialty' => $specialty_term,
+                    'term' => $terms_term,
+                );
+
+                $updated_terms = _append_terms_qs_levels($options);
+
+                break;
+            case 'durations':
+                $options += array(                    
+                    'qs_name' => 'duration',    
+                    'display_text' => 'Duration',
+                );
+                $updated_terms = _append_qs($options);
+                break;
+            case 'intensive_languages':
+                $options += array(
+                    'display_text' => 'Language',
+                    'program_type' => $program_type_term,
+                    'country' => $country_term,
+                    'city' => $city_term,
+                    'specialty' => $specialty_term,
+                    'level' => $level_term,
+                    'term' => $terms_term,
+                );
+                $updated_terms = _append_terms_alias($options);
+                break;
+            case 'countries':
+                
+                if(isset($program_type_term->tid) && $program_type_term->tid == 6441){
+                    $terms_term = array();
+                }
+                $options += array(
+                    'display_text' => 'Country',
+                    'program_type' => $program_type_term,
+                    'specialty' => $specialty_term,
+                    'term' => $terms_term,
+                    'level' => $level_term,
+                    'audience' => $audience_term,
+                    'intensive_language' =>$intensive_language_term,
+                );
+                
+                $all_countries = _append_terms_alias($options);
+                
+                $root_countries = array();
+                $popular_countries = array();
+                if(!empty($all_countries)){
+                    
+                    $root_countries = array_slice($all_countries,0,1);
+                    $all_countries = array_slice($all_countries, 1, count($all_countries)-1, true);
+
+                    $index=0;   
+
+                    $group_query = new stdClass;
+                    
+                    foreach($all_countries as $tid=>$term){
+                        if(isset($term->field_is_popular) && !empty($term->field_is_popular) && $term->field_is_popular[LANGUAGE_NONE][0]['value'] == 1){
+                            if($index == 0){
+                                $index++;                                                           
+                                $group_query->name = "--Popular Countries--";
+                            }
+                            $popular_countries[$tid] = $all_countries[$tid];
+                            unset($all_countries[$tid]);
+                        }
+                        
+                    }
+                    
+                    uasort($popular_countries, "_compare_terms_name");
+                    
+                    if(isset($group_query->name)){
+                        $popular_countries = array_replace(array(1=>$group_query),$popular_countries);
+                    }
+
+                    //add "All Countries"
+                    $group_query = new stdClass;
+                    $group_query->name = "--All Countries--";
+                    uasort($all_countries, "_compare_terms_name");
+                    $all_countries = array_replace(array(2=>$group_query), $all_countries);
+                    
+                }
+                
+                $updated_terms = array_replace(array_replace($root_countries,$popular_countries),$all_countries);
+                
+                break;
+            case 'cities':
+                //if(count($terms) > 50){
+                //    $terms = array_slice($terms, 0, 20);//get 10 only for now
+                //}
+                $options += array(
+                    'qs_name' => 'in',
+                    'display_text' => 'City',
+                );
+
+                $all_cities = _get_city_node($options, $current_product_list);
+                
+                $root_cities = array();
+                $popular_cities = array();
+                if(!empty($all_cities)){
+                    
+                    $root_cities = array_slice($all_cities,0,1);
+                    $all_cities = array_slice($all_cities, 1, count($all_cities)-1, true);
+
+                    $index=0;                
+                    
+                    foreach($all_cities as $tid=>$term){
+                        
+                        if(isset($root_cities[key($root_cities)]->field_safe_name['und'][0]['value']) && isset($term->field_safe_name_value) && $root_cities[key($root_cities)]->field_safe_name['und'][0]['value'] == $term->field_safe_name_value){
+                            unset($all_cities[$tid]);                            
+                        }else{
+                            if(isset($term->field_is_popular_value) && $term->field_is_popular_value == 1){
+                                if($index == 0){
+                                    $index++;                           
+                                    $group_query = new stdClass;
+                                    $group_query->name = "--Popular Cities--";
+                                    $popular_cities[] = $group_query;
+                                }                            
+                                $popular_cities[$tid] = $all_cities[$tid];
+                                unset($all_cities[$tid]);
+                            }
+                        }
+                        
+                    }
+                    
+                    //add "All Cities"
+                    if(!empty($all_cities)){
+                        $group_query = new stdClass;
+                        $group_query->name = "--All Cities--";
+
+                        $all_cities = array_merge(array($group_query), $all_cities);
+                    }
+                }
+
+                $updated_terms = array_merge($root_cities, array_merge($popular_cities,$all_cities));
+                
+                break;
+            case 'terms':
+                
+                //temporary fix for append terms as query string for internship 
+                if(isset($program_type_term->tid) &&  $program_type_term->tid== 6441){
+                    $options += array(
+                    'qs_name' => 'term',
+                    'display_text' => 'Term',
+                    );
+                    $updated_terms = _append_qs($options);
+                    
+                }else{
+                    $options += array(
+                        'display_text' => 'Term',
+                        'program_type' => $program_type_term,
+                        'level' => $level_term,
+                        'country' => $country_term,
+                        'city' => $city_term,
+                        'specialty' => $specialty_term,
+                        'audience' => $audience_term,
+                    );
+                    $updated_terms = _append_terms_alias($options);
+                }
+                break;
+            case 'work_types':
+                
+                $options += array(
+                    'qs_name' => 'work_type',
+                    'display_text' => 'Work Type',
+                );
+                $updated_terms = _append_qs($options);
+                
+                break;
+            //case "teach_abroad_types":
+            //    $options += array(
+            //          'display_text' => 'Teach Abroad Type',
+            //          'program_type' => $program_type_term,
+            //          'country' => $country_term,
+            //          'term' => $terms_term,
+            //      );
+            //      $updated_terms = _append_terms_alias($options);
+            //    break;
+            case "specialties":
+                $options += array(
+                    'display_text' => 'Specialty',
+                    'program_type' => $program_type_term,
+                    'level' => $level_term,
+                    'country' => $country_term,
+                    'city' => $city_term,
+                    'term' => $terms_term,
+                );
+
+                $updated_terms = _append_terms_alias($options);
+                break;
+            case "placement_audiences":
+                $options += array(
+                    'display_text' => 'Audience',
+                    'program_type' => $program_type_term,
+                    'country' => $country_term,
+                    'city' => $city_term,
+                    'term' => $terms_term,
+                );
+                $updated_terms = _append_terms_alias($options);
+                
+                break;
+            case "format":
+                break;
+        }
+    }
+    catch(Exception $e){
+        dpm($e);
+    }
+
+    return $updated_terms;
+}
+
+function _append_terms_qs_levels($options){
+    $options += array(
+        'bundle_name' => '',
+        'root_term' => null,
+        'program_type' => 0,
+        'country' => 0,
+        'specialty' => 0,
+        'term' => 0,
+        'level' => 0,
+        'terms' => array()
+    );
+    
+    if($options['program_type']->tid == '6438'){ //level is part of url for study abroad
+        return _append_terms_alias($options);
+    }else{//level is in query string for full degree and others
+        return _append_qs($options);
+    }
+
+
+}
+
+
+function _append_qs($options){
+
+    $options += array(
+        'bundle_name' => '',
+        'display_text' => '',
+        'qs_name' => '',
+        'root_term' => null,
+        'terms' => array()
+    );
+
+    $qs = _sab_faceted_nav_get_allowed_qs();
+
+    $updated_terms = array();
+    try{
+
+        $selected_term = null;
+        $selected_work_type = '';
+        
+
+        //Helen please take a look and see if this is needed when the QS is clean.
+        $allowed_qs = sab_listing_get_allowed_query_strings();
+        
+        $query_string_values = $allowed_qs[$options['bundle_name']];
+
+        $current_path = sab_faceted_nav_get_current_path();
+
+        if(array_key_exists($options['qs_name'],$qs)){
+            
+            $selected_work_type = $qs[$options['qs_name']];
+            
+            if(!empty($query_string_values[$selected_work_type])){
+                
+                $query_string_value = $query_string_values[$selected_work_type];
+                
+                if(array_key_exists('terms',$options) && !empty($options['terms']) && array_key_exists($query_string_value->entity_id, $options['terms'])){
+                    $selected_term = $options['terms'][$query_string_value->entity_id];
+                    $updated_terms[$selected_term->tid] = $selected_term;
+                }
+            }
+        }
+        else
+        {
+            $options['root_term'] = new stdClass();
+            $options['root_term']->name = 'Select a ' . $options['display_text'];
+            $options['root_term']->url_alias = array();
+            $options['root_term']->url_alias['url'] = $current_path;
+            $updated_terms[0] = $options['root_term'];
+        }        
+
+        foreach($options['terms'] as $k => $v){
+            $external_id = 0;
+
+            if(isset($v->field_external_id[LANGUAGE_NONE][0]['value']))
+                $external_id = $v->field_external_id[LANGUAGE_NONE][0]['value'];
+            
+            foreach($query_string_values as $qk => $qv){
+                $url_alias = array();
+                if($qv->external_id == $external_id){
+                    $url_alias['url'] = url($current_path);
+                    $url_alias['query'][$options['qs_name']] = $qk;//.'?work_types='.$k;
+                    foreach($qs as $qk => $qv){
+                        if($qk != $options['qs_name']){
+                            $url_alias['query'][$qk] = $qv;
+                        }
+                    }           
+                    $v->url_alias = $url_alias;
+                    break;
+                }
+            }
+
+            if(!array_key_exists($k,$updated_terms))
+            {
+
+                $updated_terms[$k] = $v;
+                if(!is_null($selected_term)){
+                    if(isset($v->entity_id) && $v->entity_id == $selected_term->tid){
+                        $updated_terms[$selected_term->tid]->url_alias = $url_alias;
+                        unset($updated_terms[$k]);
+                    }
+                }
+
+            }
+            
+        }
+    }
+    catch(Exception $e){
+        dpm($e);
+    }
+    
+    return $updated_terms;
+}
+
+
+function _append_terms_alias($options){
+    
+    $qs = _sab_faceted_nav_get_allowed_qs();
+
+    $options += array(
+        'bundle_name' => '',
+        'root_term' => null,
+        'display_text' => '',
+        'program_type' => 0,
+        'country' => 0,
+        'city' => 0,
+        'specialty' => 0,
+        'term' => 0,
+        'level' => 0,        
+        'intensive_language' => 0,      
+        'terms' => array()
+    );
+
+    $updated_terms = array();
+
+    try{
+        $current_path = sab_faceted_nav_get_current_path();
+        if(!is_null($options['root_term'])){
+            $updated_terms[$options['root_term']->tid] = $options['root_term'];            
+            //if($options['bundle_name'] == "teach_abroad_types"){
+            //    unset($options['terms'][$options['root_term']->tid]);
+            //}
+        }else{          
+            $options['root_term'] = new stdClass;
+            if($options['bundle_name'] == 'placement_audiences')
+                $options['root_term']->name = 'Select an ' . $options['display_text'];
+            else
+                $options['root_term']->name = 'Select a ' . $options['display_text'];
+            $options['root_term']->url_alias = array();
+            $options['root_term']->url_alias['url'] = $current_path;
+            
+            $updated_terms[0] = $options['root_term'];
+        }
+
+        $plids = array();
+        switch($options['bundle_name']){
+            case 'program_types':
+
+                //$query .= "JOIN {eddy_product_list_taxonomy_term_mapping} m ON p.plid = m.plid AND m.vid = 24  \n";
+                //$query .= "WHERE p.plid  IN (4494, 4495, 13719, 13733, 4534, 4761)";
+                //$plids = db_query($query)->fetchAllAssoc('tid');
+
+                $q = db_select('vw_faceted_nav', 'f');
+                $q->fields('f');
+                $q->condition('plid', array(4494, 4495, 13719, 13733, 4534, 4761), 'IN');
+                $plids = $q->execute()->fetchAllAssoc('program_type');
+
+                break;
+            case "levels":
+                $program_type_tid = 6438;//program type is study abroad
+                
+                $specialty_tid = 0;
+                if(!is_null($options['specialty'])){
+                    $specialty_tid = $options['specialty']->tid;
+                }
+                $country_tid = 0;
+                if(!is_null($options['country'])){
+                    $country_tid = $options['country']->tid;
+                }
+                $term_tid = 0;
+                if(!is_null($options['term'])){
+                    $term_tid = $options['term']->tid;
+                }
+
+                $plids = sab_product_list_get_list(array(
+                           'program_type' => $program_type_tid,
+                           'specialty' => $specialty_tid,
+                           'term' => $term_tid,
+                           'country' => $country_tid,
+                           'is_not_null' => 'level',
+                            ), 'level');  
+                
+                break;
+            case 'countries':           
+                
+                $program_type_tid = 6438;//program type is study abroad
+                if(!is_null($options['program_type'])){
+                    $program_type_tid = $options['program_type']->tid;
+                }
+
+                if($program_type_tid == '6438'){
+                    $level_tid =  6766;//undergraduate
+                }else{
+                    $level_tid = 0;
+                }
+                if(!is_null($options['level']) && $program_type_tid == '6438'){
+                    $level_tid = $options['level']->tid;
+                }
+                
+                $specialty_tid = 0;
+                if(!is_null($options['specialty'])){
+                    $specialty_tid = $options['specialty']->tid;
+                }
+
+                $term_tid = 0;
+                if(isset($options['term']->tid)){
+                    $term_tid = $options['term']->tid;
+                }
+
+
+                $intensive_language = 0;
+                if(!is_null($options['intensive_language'])){
+                    $intensive_language = $options['intensive_language']->tid;
+                }
+
+                $plids = sab_product_list_get_list(array(
+                           'program_type' => $program_type_tid,
+                           'level' => $level_tid,
+                           'specialty' => $specialty_tid,
+                           'term' => $term_tid,
+                           'intensive_languages' => $intensive_language,
+                           'is_not_null' => 'country',
+                            ), 'country');  
+                
+                break;
+            
+            
+
+            case 'intensive_languages':
+                $program_type_tid = 6442;//program type is intensive language
+                if(!is_null($options['program_type'])){
+                    $program_type_tid = $options['program_type']->tid;
+                }
+
+                $level_tid=0;
+                if(!is_null($options['level']) && $program_type_tid == '6438'){
+                    $level_tid = $options['level']->tid;
+                }
+
+                $country_tid = 0;
+                if(!is_null($options['country'])){
+                    $country_tid = $options['country']->tid;
+                }
+
+                $term_tid = 0;
+                if(!is_null($options['term'])){
+                    $term_tid = $options['term']->tid;
+                }
+
+                $specialty_tid = 0;
+                if(!is_null($options['specialty'])){
+                    $specialty_tid = $options['specialty']->tid;
+                }
+
+                $plids = sab_product_list_get_list(array(
+                        'program_type' => $program_type_tid,
+                        'level' => $level_tid,
+                        'country' => $country_tid,
+                        'term' => $term_tid,
+                        'specialty' => $specialty_tid,
+                        'is_not_null' => 'intensive_languages',
+                        ),'intensive_languages');
+                break;
+
+            case "specialties":
+
+                $program_type_tid = 6437; //full degree
+                if(!is_null($options['program_type'])){
+                    $program_type_tid = $options['program_type']->tid;
+                }
+
+                $level_tid = 0;
+                if(!is_null($options['level']) && $program_type_tid == '6438'){
+                    $level_tid = $options['level']->tid;
+                }
+
+                $country_tid = 0;
+                if(!is_null($options['country'])){
+                    $country_tid = $options['country']->tid;
+                }                
+
+                $term_tid = 0;
+                if(!is_null($options['term'])){
+                    $term_tid = $options['term']->tid;
+                }
+
+                $plids = sab_product_list_get_list(array(
+                  'program_type' => $program_type_tid,
+                  'level' => $level_tid,
+                  'country' => $country_tid,
+                  'term' => $term_tid,
+                  'is_not_null' => 'specialty',
+                   ),'specialty');
+
+                break;
+
+            case "terms":
+                $program_type_tid = 6441;//intern abroad
+                if(!is_null($options['program_type'])){
+                    $program_type_tid = $options['program_type']->tid;
+                }
+
+                $level_tid =  0;
+                if(!is_null($options['level']) && $program_type_tid == '6438'){
+                    $level_tid = $options['level']->tid;
+                }
+                
+                $country_tid =0;
+                if(!is_null($options['country'])){
+                    $country_tid = $options['country']->tid;
+                }
+
+                $specialty_tid = 0;
+                if(!is_null($options['specialty'])){
+                    $specialty_tid = $options['specialty']->tid;
+                }
+                $plids = sab_product_list_get_list(array(
+                    'program_type' => $program_type_tid,
+                    'level' => $level_tid,
+                    'country' => $country_tid,
+                    'specialty' =>$specialty_tid,
+                    'is_not_null' => 'term',
+                    ),'term');                                        
+
+                break;
+
+            case "placement_audiences":
+                $program_type_tid = 6440;//teach abroad
+
+                $country_tid =0;
+                if(!is_null($options['country'])){
+                    $country_tid = $options['country']->tid;
+                }
+
+                $term_tid = 0;
+                if(!is_null($options['term'])){
+                    $term_tid = $options['term']->tid;
+                }
+
+                $plids = sab_product_list_get_list(array(
+                    'program_type' => $program_type_tid,
+                    'country' => $country_tid,
+                    'term' => $term_tid,
+                    'is_not_null' => 'audience',
+                    ),'audience');                                        
+
+                break;
+
+            //case "teach_abroad_types":
+            //    $program_type_tid = 6442;//intensive language
+
+            //    $mapping_query = 'SELECT plid from {eddy_faceted_nav_product_list_term_mapping} p WHERE p.program_type = '.$program_type_tid.' and p.intensive_languages is not null and p.level IS NULL and p.term IS NULL and p.specialty IS NULL and p.country IS NULL';
+
+            //    $results = db_query($mapping_query)->fetchAllAssoc('plid');
+
+            //    $country_plids = array_keys($results);
+            //    $query = "SELECT m.plid,p.has_node,p.nid,p.is_active,m.mid,m.tid,m.vid FROM {eddy_product_list} p \n";
+            //    $query .= "JOIN {eddy_product_list_taxonomy_term_mapping} m ON p.plid = m.plid AND m.vid = 21";
+            //    $query .= "WHERE p.plid  IN (:country_plids)";
+
+            //    $plids = db_query($query, array(':country_plids' => $country_plids))->fetchAllAssoc('tid');
+            //    break;
+        }
+
+        if($options['bundle_name'] == "program_types"){
+            
+            $qs = array();
+
+        }
+        if($options['bundle_name'] == "cities" && array_key_exists('in', $qs)){
+            unset($qs['in']);            
+        }
+
+        if(count($plids)>0){
+            
+            $url_alias = array();
+            $has_city_nodes = array();
+            $start_time = date('s') . substr((string)microtime(), 1, 7);
+            if(!empty($options['city']->field_safe_name['und'][0]['value']) && ($options['bundle_name'] == 'specialties' || $options['bundle_name'] == 'terms' || $options['bundle_name'] == 'intensive_languages' || $options['bundle_name'] == 'placement_audiences')){
+                
+                $qs['in'] = $options['city']->field_safe_name['und'][0]['value'];
+                $has_city_nodes = has_city_node($plids,$options['city']->tid);
+                
+            }
+            foreach($plids as $k => $v){
+                if(!empty($options['terms'][$k])){
+                    if(array_key_exists($v->plid, $has_city_nodes)){
+                        $url_alias['url'] = url($has_city_nodes[$v->plid]->alias);
+                        
+                    }elseif(isset($v->alias)){
+                        $url_alias['url'] = url($v->alias);
+                    }else{
+                        $url_alias['url'] = product_list_url($v, 'alias');
+                    }
+                    if($options['bundle_name'] == 'cities'){
+                        $options['terms'][$k]->has_node = true;
+                    }
+
+                    if(array_key_exists("in", $qs) && ($options['bundle_name']=="countries" || array_key_exists($v->plid, $has_city_nodes))){
+                        $qs_no_city = $qs;
+                        unset($qs_no_city['in']);
+                        $url_alias['query'] = $qs_no_city;
+                    }else{
+                        $url_alias['query'] = $qs;
+                    }
+
+                    $options['terms'][$k]->url_alias = $url_alias;
+                    
+                    if(array_key_exists($k,$updated_terms)){                    
+                        $updated_terms[$k]->url_alias = $url_alias;
+                        unset($options['terms'][$k]);
+                    }
+                    
+                }
+            }
+            //to keep the terms order by weight
+            $updated_terms = array_replace($updated_terms, $options['terms']);
+
+            $end_time = date('s') . substr((string)microtime(), 1, 7);
+
+            $requestTime = ($end_time - $start_time);
+
+            //dpm($requestTime);
+
+        }
+        
+    }
+    catch(Exception $e){
+        dpm($e);
+    }
+    
+    return $updated_terms;
+}
+
+function _compare_terms_name($a, $b)
+{
+    return strcmp($a->name, $b->name);
+}
+
+function get_sab_faceted_nav_me_filter($relations, $filter_name){
+    $results = array();
+    if(!empty($relations)){
+        if($filter_name == "country" || $filter_name == "state"){
+            if(array_key_exists("state", $relations))
+                unset($relations["state"]);
+            if(array_key_exists("city", $relations))
+                unset($relations["city"]);
+        }
+        unset($relations[$filter_name]);        
+        $results = eddy_services_get_listings($relations, "GetFacetedNavigation");
+    }
+    return $results;
+
+}
+
+/*
+ * transform product list options isid to terms
+ */
+function get_sab_faceted_nav_product_list_options_term($options){
+    
+    $term_type_mapping = array();
+    if(count($options) >0){
+        $term_type_mapping['type'] = "program_types";
+        $term_type_mapping['level'] = "levels";
+        $term_type_mapping['country'] = "countries";
+        $term_type_mapping['city'] = "cities";
+        $term_type_mapping['state'] = "countries"; //4 states are in countries taxonomy term
+        $term_type_mapping['specialty'] = "specialties";
+        $term_type_mapping['term'] = "terms";
+        $term_type_mapping['language'] = "intensive_languages";
+        $term_type_mapping['placement_audience'] = "placement_audiences";
+        $term_type_mapping['duration'] = "durations";
+        $term_type_mapping['work_type'] = "work_types";
+
+        $query = "SELECT t.tid from {taxonomy_term_data} t ";
+        $query .= "left JOIN {taxonomy_term_hierarchy} th ON th.tid = t.tid ";
+        $query .= "left JOIN {field_data_field_external_id} ex ON ex.entity_id = t.tid ";
+        $query .= " WHERE ex.entity_type = 'taxonomy_term' ";
+        $query .= " and (";
+        
+        $index = 0;
+        foreach($options as $k=>$v){
+
+            if($k == "state"){
+
+                $query .= " (field_external_id_value = $v[0] and ex.bundle='$term_type_mapping[$k]' and th.parent>0)";
+
+            }elseif($k == "country"){
+
+                $query .= " (field_external_id_value = $v[0] and ex.bundle='$term_type_mapping[$k]' and th.parent=0)";
+
+            }else{
+
+                $query .= " (field_external_id_value = $v[0] and ex.bundle='$term_type_mapping[$k]')";
+
+            }
+
+            if($index == count($options)-1){
+                $query .= ")";
+            }else{
+                $query .= " or ";
+            }
+            $index ++;
+        }
+
+        $tids = db_query($query)->fetchCol();
+        
+        if(!empty($tids)){            
+            return taxonomy_term_load_multiple($tids);
+        }
+    }
+}
+
+function sab_faceted_nav_add_remove_option(&$terms, $options, $root){
+
+    $level_tid = 0;
+    $program_type_tid = 0;
+    $country_tid = 0;
+    $city_tid = 0;
+    $specialty_tid = 0;
+    $term_tid = 0;
+    $audience_term = 0; //Ask Helen about naming convention and unused Variable.
+    $intensive_language_term = 0;
+
+    if(isset($root->url_alias) && is_array($root->url_alias)){
+
+        $qs = array_change_key_case(drupal_get_query_parameters(), CASE_LOWER);
+
+        $allowed_qs_keys = sab_faceted_nav_get_allowed_query_string_keys();
+
+        //only allowed query string parameter will be kept
+        foreach($qs as $k => $v){
+            if(!in_array($k, $allowed_qs_keys)){
+                unset($qs[$k]);
+            }
+        }
+
+        $current_product_list = $options['current_product_list'];
+        
+        //sab_listing_set_options_from_query_string($current_product_list);
+        foreach($current_product_list as $k => $v){
+            if($v->vocabulary_machine_name == 'levels'){
+                $level_tid  = $v->tid;
+            }
+            if($v->vocabulary_machine_name == 'program_types'){
+                $program_type_tid  = $v->tid;
+            }
+            if($v->vocabulary_machine_name == 'countries'){
+                $country_tid  = $v->tid;
+            }
+            if($v->vocabulary_machine_name == 'cities'){
+                $city_tid  = $v->tid;
+            }
+            if($v->vocabulary_machine_name == 'specialties'){
+                $specialty_tid = $v->tid;
+            }
+            if($v->vocabulary_machine_name == 'terms'){
+                $term_tid  = $v->tid;
+            }
+            if($v->vocabulary_machine_name == 'placement_audiences'){
+                $audience_term  = $v->tid;
+            }
+            if($v->vocabulary_machine_name == 'intensive_languages'){
+                $intensive_language_term  = $v->tid;
+            }
+        }
+
+        //Removed Level for Full Degree pages since it is a Query String.
+        if($program_type_tid == 6437){
+            $level_tid = 0;
+        }
+
+        $current_path = sab_faceted_nav_get_current_path();
+
+        $remove_term = new stdClass;
+        
+        try{
+
+            $plids = array();
+            switch($options['taxonomy_term_machine_name']){
+                case 'program_types':
+                    $remove_term-> url_alias = array(); 
+                    $remove_term->name = 'All Program Types';    
+                    $remove_term-> url_alias['url'] = '/program-type';
+
+                    break;
+                case "levels":                    
+                    
+                    if($program_type_tid == 0){
+                        $program_type_tid = 6438;//program type is study abroad
+                    }
+                    
+                    if($program_type_tid != 6438){
+                        $remove_term-> url_alias = array(); 
+                        //remove level from qs
+                        $remove_term->name = 'All Levels'; 
+                        $remove_term-> url_alias['url'] = $current_path;
+                        if(array_key_exists('level',$qs))
+                            unset($qs['level']);
+                        $remove_term-> url_alias['query'] = $qs;
+
+                    }
+                    
+                    break;
+                case 'countries':    
+                    $remove_term-> url_alias = array(); 
+                    $remove_term->name = 'All Countries'; 
+                    if(array_key_exists("in",$qs))
+                        unset($qs['in']);
+                    $plids = sab_product_list_get_list(array(
+                               'program_type' => $program_type_tid,
+                               'specialty' => $specialty_tid,
+                               'term' => $term_tid,
+                               'level' => $level_tid,
+                               'intensive_languages' => $intensive_language_term,
+                                'country' => 0,
+                                ));  
+
+                    break;
+                
+                case 'cities':
+                    $remove_term-> url_alias = array(); 
+                    
+                    if($city_tid > 0){
+                        $remove_term->name = 'All Cities';                       
+                        if(array_key_exists('in',$qs)){
+
+                            $remove_term-> url_alias['url'] = $current_path;
+                            unset($qs['in']);
+                            if(array_key_exists('page',$qs))
+                                unset($qs['page']);
+                            $remove_term-> url_alias['query'] = $qs;
+                        }
+                        else{
+                            
+                            $query = "SELECT np.field_plid_value from {field_data_field_plid} np \n";
+                            $query .= " join {field_data_field_city_tr} c on np.entity_id = c.entity_id and c.bundle = 'city' and c.entity_type = 'node'";
+                            $query .= " join {node} n on np.entity_id = n.nid";
+                            $query .= " where c.field_city_tr_tid = '". $city_tid . "'";
+                            $plid_city = db_query($query)->fetchAllAssoc('field_plid_value');
+                            
+                            if(!empty($plid_city)){
+                                $plid = array();
+                                if(count($plid_city) >=1){
+                                    $plids = sab_product_list_get_list(array(
+                                       'program_type' => $program_type_tid,
+                                       'specialty' => $specialty_tid,
+                                       'term' => $term_tid,
+                                       'level' => $level_tid,
+                                       'intensive_languages' => $intensive_language_term,
+                                        'country' => $country_tid,
+                                        ));
+
+                                    foreach($plids as $value){
+                                        if(array_key_exists($value->plid, $plid_city)){
+                                            $plid[$value->plid] = $plid_city[$value->plid];
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if(!empty($plid)){
+                                    $result = get_product_list_info_by_plid(key($plid))->product_list;
+                                    //if(array_key_exists("in",$qs))
+                                    //    unset($qs['in']);
+                                    $remove_term-> url_alias['url'] = product_list_url($result, 'alias');
+                                }
+                                $remove_term-> url_alias['query'] = $qs;
+                            }
+
+                        }
+                    }
+                    
+                    break;
+
+
+                case 'intensive_languages':
+                    $remove_term-> url_alias = array(); 
+                    $remove_term->name = 'All Intensive Languages'; 
+                    
+                    $plids = sab_product_list_get_list(array(
+                            'program_type' => $program_type_tid,
+                            'level' => $level_tid,
+                            'country' => $country_tid,
+                            'term' => $term_tid,
+                            'specialty' => $specialty_tid,
+                            'intensive_languages' =>0,
+                            ));
+                    break;
+
+                case "specialties":
+                    $remove_term-> url_alias = array(); 
+                    $remove_term->name = 'All Specialties';                     
+                    $plids = sab_product_list_get_list(array(
+                      'program_type' => $program_type_tid,
+                      'level' => $level_tid,
+                      'country' => $country_tid,
+                      'term' => $term_tid,
+                      'specialty' => 0,
+                       ));
+
+                    break;
+
+                case "terms":
+                    $remove_term-> url_alias = array(); 
+                    $remove_term->name = 'All Terms';    
+                    if($program_type_tid == 6441){
+                        $remove_term-> url_alias['url'] = $current_path;
+                        if(array_key_exists('term',$qs))
+                            unset($qs['term']);
+                        $remove_term-> url_alias['query'] = $qs;
+
+                    }else{
+                        $plids = sab_product_list_get_list(array(
+                            'program_type' => $program_type_tid,
+                            'level' => $level_tid,
+                            'country' => $country_tid,
+                            'specialty' =>$specialty_tid,
+                            'term' => 0,
+                            ));                                        
+                    }
+                    break;
+
+                case "placement_audiences":
+                    $remove_term-> url_alias = array(); 
+                    $remove_term->name = 'All Placement Audiences';                     
+                    $plids = sab_product_list_get_list(array(
+                        'program_type' => $program_type_tid,
+                        'country' => $country_tid,
+                        'term' => $term_tid,
+                        'audience' => 0,
+                        ));                                        
+
+                    break;
+
+                case 'durations':
+                    $remove_term-> url_alias = array(); 
+                    $remove_term->name = 'All Durations'; 
+                    $remove_term-> url_alias['url'] = $current_path;
+                    if(array_key_exists('duration',$qs))
+                        unset($qs['duration']);
+                    $remove_term-> url_alias['query'] = $qs;
+                    break;
+
+                case 'work_types':
+                    $remove_term-> url_alias = array(); 
+                    $remove_term->name = 'All Work Types'; 
+                    $remove_term-> url_alias['url'] = $current_path;
+                    if(array_key_exists('work_type',$qs))
+                        unset($qs['work_type']);
+                    $remove_term-> url_alias['query'] = $qs;
+                    break;
+                //case "teach_abroad_types":
+                //    $program_type_tid = 6442;//intensive language
+
+                //    $mapping_query = 'SELECT plid from {eddy_faceted_nav_product_list_term_mapping} p WHERE p.program_type = '.$program_type_tid.' and p.intensive_languages is not null and p.level IS NULL and p.term IS NULL and p.specialty IS NULL and p.country IS NULL';
+
+                //    $results = db_query($mapping_query)->fetchAllAssoc('plid');
+
+                //    $country_plids = array_keys($results);
+                //    $query = "SELECT m.plid,p.has_node,p.nid,p.is_active,m.mid,m.tid,m.vid FROM {eddy_product_list} p \n";
+                //    $query .= "JOIN {eddy_product_list_taxonomy_term_mapping} m ON p.plid = m.plid AND m.vid = 21";
+                //    $query .= "WHERE p.plid  IN (:country_plids)";
+
+                //    $plids = db_query($query, array(':country_plids' => $country_plids))->fetchAllAssoc('tid');
+                //    break;
+            }            
+
+            if(count($plids) == 1){
+                $has_city_nodes = array();
+
+                if($city_tid!=0 && ($options['taxonomy_term_machine_name'] == 'specialties' || $options['taxonomy_term_machine_name'] == 'terms' || $options['taxonomy_term_machine_name'] == 'intensive_languages' || $options['taxonomy_term_machine_name'] == 'placement_audiences')){
+                    
+                    $has_city_nodes = has_city_node($plids,$city_tid);
+
+                }
+                if(!empty($has_city_nodes)){
+                    if(array_key_exists("in", $qs))
+                        unset($qs['in']);
+                    $remove_term-> url_alias['url'] = $has_city_nodes[key($has_city_nodes)]->alias;
+                }else{
+                    $product_list = new stdClass;
+                    $product_list->plid = $plids[0]->plid;
+                    $product_list->product_list = $plids[0];
+
+                    //remove item will reset the page to first page
+                    if(array_key_exists('page',$qs))
+                        unset($qs['page']);
+
+                    $remove_term-> url_alias['url'] = product_list_url($product_list, 'alias');
+                    
+                }
+                $remove_term-> url_alias['query'] = $qs;
+            }
+
+            if(property_exists($remove_term,'name'))
+                array_unshift($terms, $remove_term);
+        }
+        catch(Exception $e){
+            dpm($e);
+        }
+
+    }
+    return $terms;
+}
+
+
+
+function _sab_faceted_nav_get_allowed_qs(){
+
+    $qs = array_change_key_case(drupal_get_query_parameters(), CASE_LOWER);
+
+    $allowed_qs = sab_listing_get_allowed_query_strings();
+
+    //only allowed query string parameter will be kept
+    foreach($qs as $k => $v){
+
+        //Removes Keys that are not excepted.
+        if(!in_array($k, sab_faceted_nav_get_allowed_query_string_keys())){
+            
+            unset($qs[$k]);
+
+        }
+        
+        //Removes Values that are not excepted.
+        switch($k){
+
+            case 'level':
+                
+                if(!in_array($v, array_keys($allowed_qs['levels']))){
+                    
+                    unset($qs[$k]);
+                    
+                }
+                
+                break;
+
+            //case 'in':
+            
+            //    if(!in_array($v, array_keys($allowed_qs['in']))){
+            
+            //        unset($qs[$k]);
+            
+            //    }
+            
+            //    break;
+
+            case 'duration':
+                
+                if(!in_array($v, array_keys($allowed_qs['durations']))){
+                    
+                    unset($qs[$k]);
+                    
+                }
+                
+                break;
+
+            case 'work_type':
+                
+                if(!in_array($v, array_keys($allowed_qs['work_types']))){
+                    
+                    unset($qs[$k]);
+                    
+                }
+                
+                break;
+            
+        }
+
+    }
+
+    return $qs;
+
+}
+
+function _get_city_node($options, $current_product_list){
+
+    $options += array(
+        'bundle_name' => '',
+        'display_text' => '',
+        'qs_name' => '',
+        'root_term' => null,
+        'terms' => array()
+    );
+    $qs = _sab_faceted_nav_get_allowed_qs();
+    
+    $selected_term = new stdClass;
+    $updated_terms = array();
+    $url_alias = array();
+    try{
+        $current_path = sab_faceted_nav_get_current_path();
+        if(!empty($current_product_list)){
+            foreach($current_product_list as $tid=>$term){
+                if($term->vocabulary_machine_name == 'cities'){
+                    //$selected_term = $term;
+                    $updated_terms[$term->tid] = $term;
+
+                    //unset($terms[$term->tid]);
+                    break;
+                }
+                
+            }
+            
+        }
+        if(empty($updated_terms)){
+            $options['root_term'] = new stdClass();
+            $options['root_term']->name = 'Select a ' . $options['display_text'];
+            $options['root_term']->url_alias = array();
+            $options['root_term']->url_alias['url'] = $current_path;
+            $updated_terms[0] = $options['root_term'];
+        }        
+        foreach($options['terms'] as $k => $v)
+        {
+            
+            $updated_terms[$k] = $v;
+        }
+        $plids = array();
+        if(!empty($options['terms'])){
+
+            $current_product_list_page = get_sab_product_list_current_product_list();
+            $cplid = $current_product_list_page->plid;
+            $query = "SELECT n.nid, s.field_safe_name_value, u.alias, c.field_city_tr_tid from {node} n \n";            
+            $query .= " join {field_data_field_city_tr} c on c.entity_id = n.nid and c.bundle = 'city' and c.entity_type = 'node'";
+            $query .= " join {field_data_field_safe_name} s on s.entity_id = c.field_city_tr_tid and s.bundle='cities' and s.entity_type='taxonomy_term'";
+            $query .= " join {field_data_field_plid} np on np.entity_id = n.nid";
+            $query .= " join {url_alias} u on 'node/' + CONVERT(VARCHAR(50), n.nid) = u.source";
+            $query .= " where np.field_plid_value = '$cplid' and c.field_city_tr_tid in (" . implode(",", array_keys($options['terms'])) . ")";
+            $plids = db_query($query)->fetchAllAssoc('field_safe_name_value');
+
+        }
+        
+        if(array_key_exists('in', $qs)){
+            unset($qs['in']);            
+        }                
+        
+        foreach($updated_terms as $k=>$v){
+            
+            if(isset($v->field_safe_name_value)){
+                if(array_key_exists($v->field_safe_name_value, $plids)){
+                    
+                    $url_alias[$v->field_safe_name_value][$k]['url'] = url($plids[$v->field_safe_name_value]->alias);                       
+                    
+                }else{
+                    $url_alias[$v->field_safe_name_value][$k]['url'] = url($current_path);
+                    $url_alias[$v->field_safe_name_value][$k]['query'][$options['qs_name']] = $v->field_safe_name_value;
+                }
+                foreach($qs as $qk => $qv){
+                    if($qk != $options['qs_name']){
+                        $url_alias[$v->field_safe_name_value][$k]['query'][$qk] = $qv;
+                    }
+                }    
+
+            }else{
+                $url_alias[$k]['url'] = '';                
+                
+                foreach($qs as $qk => $qv){
+                    if($qk != $options['qs_name']){
+                        $url_alias[$k]['query'][$qk] = $qv;
+                    }
+                }  
+            }
+            
+            
+            if(isset($v->field_safe_name_value) && array_key_exists($v->field_safe_name_value, $url_alias)){
+
+                //remove duplicated city term
+                
+                if(count($url_alias[$v->field_safe_name_value]) == 1){
+                    $updated_terms[$k] = $v;
+                    $updated_terms[$k]->url_alias = $url_alias[$v->field_safe_name_value][$k];
+                }else{
+                    unset($updated_terms[$k]);
+                }
+            }
+            else{
+                $updated_terms[$k] = $v;
+                $updated_terms[$k]->url_alias = $url_alias[$k];
+            }
+            
+        }
+
+    }
+    catch(Exception $e){
+        dpm($e);
+    }
+
+    return $updated_terms;
+
+}
+
+/*
+ * check if the plid has a city mapped node 
+ */
+function has_city_node($plids, $ctid){
+
+    $plid_str = array();
+
+    foreach($plids as $plid){
+        $plid_str[]= $plid->plid;
+    }
+    
+    $query = db_select('field_data_field_plid', 'p');
+    $query->join("field_data_field_city_tr", "c", "c.entity_id=p.entity_id and c.entity_type='node' and c.bundle='city'");
+    $query->join("url_alias", "u", "'node/' + CONVERT(VARCHAR(50), p.entity_id) = u.source");
+    $query->fields('u', array('alias'));
+    $query->fields('p', array('field_plid_value'));
+    $query->condition('p.field_plid_value', $plid_str, 'in');
+    $query->condition('c.field_city_tr_tid', $ctid);
+    $result = $query->execute()->fetchAllAssoc('field_plid_value');
+
+    return $result;
+
+}
+
+/*
+ * Returns the current path.
+ */
+function sab_faceted_nav_get_current_path(){
+
+    return product_list_url(get_sab_product_list_current_product_list());
+
+}
+
+function sab_faceted_nav_get_allowed_query_string_keys(){
+
+    return array('in', 'duration', 'work_type', 'level', 'term');
+
+}

@@ -1,0 +1,26 @@
+<?php
+
+/**
+ * @file
+ * Install and un-install tasks live in this file.
+ */
+/**
+ * Implements hook_schema().
+ */
+ 
+function eddy_listing_faceted_nav_schema() {
+  $schema['cache_eddy_faceted_nav'] = drupal_get_schema_unprocessed('system', 'cache');
+  return $schema;
+}
+
+/** 
+ * Implements hook_update_N()
+ *
+ * Add the "cache_eddy_faceted_nav" table.
+ */
+function eddy_listing_faceted_nav_update_7002() {
+	
+	db_create_table('cache_eddy_faceted_nav', drupal_get_schema_unprocessed('system', 'cache'));
+	return t('The caching table has been created for the Faceted Navigation.');
+	
+}

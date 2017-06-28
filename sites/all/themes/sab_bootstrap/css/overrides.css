@@ -1,0 +1,83 @@
+.action-links{
+    list-style:none;
+    padding:0;
+}
+.action-links li{
+    display:inline-block;
+}
+    .action-links li a {
+        text-decoration: none;
+        display: block;
+        padding: 3px 8px;
+        border: 2px solid #2B4568;
+        text-transform: uppercase;
+        color: #2B4568;
+        background:#FEBB36;
+    }
+    .action-links li a:hover{
+        color:white;
+        background:#2B4568;
+    }
+p:last-child{
+    margin-bottom:10px;
+}
+.container{
+    max-width: 100%;
+    width:100%;
+    padding:0;
+}
+.well{
+    background:none;
+    border:0;
+    padding-left:0;
+    padding-right:0;
+}
+.row{
+    margin:0;
+}
+.form-control{
+    display:initial;
+}
+.ui-tooltip{
+    position:absolute;
+    border:1px solid;
+    background:white;
+}
+.featured-study-abroad-programs .caption
+{
+    background-color: #d8dad9 !important;
+    padding: 9px !important;
+    margin-bottom: 20px;
+}
+
+.views-view-grid .node-teaser {
+border: 0;
+padding: 0;
+margin: 0;
+}
+.views-view-grid td {
+vertical-align: top;
+ 
+}
+.node-article-page  .field-type-image img{
+ 
+  float:inherit;
+}
+
+@media (min-width: 1200px) {
+    .container {
+        width: 1280px;
+        padding:0;
+    }
+
+}
+
+@media (max-width: 1200px) {
+    /*div[class*="col-"],
+    section[class*="col-"] {
+        padding:0;
+    }*/
+
+}
+
+

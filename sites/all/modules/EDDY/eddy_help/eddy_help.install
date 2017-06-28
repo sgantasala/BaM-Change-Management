@@ -1,0 +1,65 @@
+<?php
+
+/**
+ * @file
+ * Install and un-install tasks live in this file.
+ */
+/**
+ * Implements hook_schema().
+ */
+ 
+function eddy_help_schema() {
+  $schema['eddy_help'] = array(
+    'description' => 'Stores custom definitions for EDDY.',
+    'fields' => array(
+      'id' => array(
+        'description' => 'The id of the Help Item.',
+		'type' => 'serial',		
+        'unsigned' => TRUE, 
+        'not null' => TRUE,
+      ),
+	  'title' => array( 
+        'description' => 'The title of the Help item.', 
+        'type' => 'varchar', 
+		'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+      ),	  	  
+      'description' => array(
+        'description' => 'The description of the Help item.', 
+        'type' => 'varchar', 
+		'length' => 'max',
+        'not null' => FALSE,
+		'default' => '',
+      ),
+	  'uid' => array(
+        'description' => 'The {users}.uid that owns this node; initially, this is the user that created it.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'status' => array(
+        'description' => 'Boolean indicating whether the definition is published (visible to non-administrators).',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 1,
+      ),
+      'created' => array(
+        'description' => 'The Unix timestamp when the node was created.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'changed' => array(
+        'description' => 'The Unix timestamp when the node was most recently saved.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('id'),
+  );
+  
+  return $schema;
+  
+}

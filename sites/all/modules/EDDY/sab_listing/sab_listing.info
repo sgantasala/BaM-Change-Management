@@ -1,0 +1,6 @@
+name = SAB Listing
+description = This is a module extends the EDDY Listing module for StudyAbroad.com.
+core = 7.x
+package = Eddy Core Business
+
+dependencies[] = eddy_listing

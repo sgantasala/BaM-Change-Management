@@ -1,0 +1,8 @@
+name = SAB Institution Details
+description = This is a module to display all school information and the programs.
+core = 7.x
+package = Eddy Core Business
+
+stylesheets[all][] = style/style.css
+
+dependencies[] = sab_listing

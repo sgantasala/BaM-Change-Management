@@ -1,0 +1,8 @@
+name = SAB Redirects
+description = Provides Programiatic Redirects from the old dynamic url patterns.
+core = 7.x
+
+package = Eddy Core Business
+
+dependencies[] = eddy_listing
+dependencies[] = sab_product_list

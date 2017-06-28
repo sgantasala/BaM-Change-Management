@@ -1,0 +1,4 @@
+name = EDDY HTTPS Migration
+description = Updates internal references to use a relative or the https:// protocol.
+core = 7.x
+package = EDDY Updates

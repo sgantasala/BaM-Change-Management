@@ -1,0 +1,133 @@
+body
+{
+}
+.scholarship-container .thumbnail
+{
+    color: #333333;
+    font-size: 16px;
+    background-color: #F9F9F9 !important;
+}
+
+.scholarship-container h2
+{
+    border-bottom: 0.5px solid #333333;
+    color: #990000;
+}
+
+.scholarship-form-header-container
+{
+    color: #333333;
+    font-family: "Courier";
+}
+
+.scholarship-container .thumbnail a
+{
+    color: #00a8ff;
+}
+
+.scholarship-container .thumbnail ul
+{
+      margin:0px !important;
+   padding:0px !important;
+}
+.scholarship-container  li
+{
+   list-style-type:none !important;
+   margin:0px !important;
+}
+/*.scholarship-header-image
+{
+    background: url("http://static.gradschools.com/images/headerbg.jpg") no-repeat scroll 0 0 rgba(0, 0, 0, 0);
+    clear: both;
+    height: 480px;
+    margin-top: 10px !important;
+    background-color: #000;
+}*/
+
+.salary
+{
+    font-size: 35px;
+    font-weight: bold;
+}
+
+.winner-title
+{
+    font-size: 20px;
+}
+
+.scholarship-container .radio label, .scholarship-container .checkbox label{
+    font-size:.8em;
+    display: inline-block;
+}
+
+.scholarship-container .btn-primary {
+    margin:0 auto;
+    padding:10px 20px;
+    display:block;
+}
+
+/* Medium devices (desktops, 992px and up) */
+@media (min-width: 1280px)
+{
+    .scholarship-form-container
+    {
+        margin-top: --585px;
+    }
+}
+#webform-component-Email label,
+#webform-component-MilitaryAffiliation label,
+#webform-component-Phone label,
+#webform-component-PostalCode label,
+#webform-component-FirstName label,
+#webform-component-LastName label,
+#webform-component-SchoolName label,
+#webform-component-EducationLevel label {
+  display: none;
+}
+
+
+.testimonial {
+  position: absolute;
+  background-color: rgba(0,30,50,0.7);
+  height: 100%;
+  color: #FFF;
+  line-height: 1.5;
+ }
+
+.testimonial p {
+  margin: 0 1em 1em;
+  line-height: 1.2;
+   font-size: 14px
+}
+.winner-name {
+  font-size: 18px;
+  font-weight: bold;
+  padding: .5em;
+  margin: 0;
+  line-height: 1;
+  background: #F0F0F0;
+}
+
+.porfolio {
+  cursor: pointer;
+}
+
+.scholarship-page-title h2{
+    color: #fff;
+}
+
+@media (min-width:1024px){
+    .node-type-scholarship-contest-page h1.page-header{
+        display:none;
+    }
+}
+
+@media (max-width:1024px) {
+    .node-type-scholarship-contest-page button#edit-submit--2 {
+        height: 36px;
+    }
+
+    .node-type-scholarship-contest-page #edit-submitted-exclude-acknowledge {
+        font-size: 15px;
+    }
+}

@@ -1,0 +1,743 @@
+<?php
+
+define('sab_sitemap_programs_per_page', 2000);
+
+/**
+ * Implements hook_menu().
+ */
+function sab_sitemap_menu() {
+
+    $items['sitemap-index.xml'] = array(
+	  'page callback' => '_sab_sitemap_index',
+	  'access callback' => TRUE,
+    );
+
+    $items['sitemap-programs.xml'] = array(
+	  'page callback' => '_sab_sitemap_programs',
+	  'access callback' => TRUE,
+      'page arguments' => array(1, '0'),
+    );
+
+    $items['sitemap-durations.xml'] = array(
+     'page callback' => '_sab_sitemap_query_options',
+     'access callback' => TRUE,
+     'page arguments' => array(2, 'duration', NULL),
+    );
+
+    $items['sitemap-work-types.xml'] = array(
+     'page callback' => '_sab_sitemap_query_options',
+     'access callback' => TRUE,
+     'page arguments' => array(2, 'work_type', NULL),
+    );
+
+    $items['admin/config/search/xmlsitemap/rebuild-custom-links'] = array(
+      'title' => 'REBUILD CUSTOM LINKS',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('sab_sitemap_custom_rebuild_form'),
+      'access arguments' => array('administer xmlsitemap'),
+      'type' => MENU_LOCAL_TASK,
+      'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+      'weight' => 100, 
+    );
+
+    return $items;
+
+}
+
+
+/**
+ * Menu Callback which returns all the Program Details URLs.
+ */
+function _sab_sitemap_programs($arg_1, $qs_page = 0, &$context = array()){
+
+    try{
+        
+        global $base_root;
+
+        $results = array(); 
+
+        $qs = array_change_key_case(drupal_get_query_parameters($_GET, array('q')), CASE_LOWER);
+
+        $page = 0;
+        
+        if(isset($qs['page']) && is_numeric($qs['page'])){
+            $page = $qs['page'];
+        }else if($qs_page > 0) {
+            $page = $qs_page; 
+        }
+        
+        //$page_size = sab_sitemap_programs_per_page; 
+        
+        $key = "sab_sitemap_programs_$page";
+       
+        if($cache = cache_get($key, 'cache_sab_sitemap')){
+
+            $output = $cache->data;
+            
+        }else {
+
+            if($page == 0){
+                
+                $max = _sab_sitmap_get_program_pages();
+                
+                $xml = "";
+                for ($i = 1; $i <= $max; $i++){
+                    
+                    $xml .= '<sitemap><loc>' . $base_root . '/sitemap-programs.xml?page=' . $i . '</loc><lastmod>' . date('Y-m-d') . '</lastmod></sitemap>';
+                    
+                }
+                
+                $output = _sab_sitemap_wrap_sitemap_index_xml($xml);
+                
+                if(!empty($context)) {
+                    
+                    // Store result for post-processing in the finished callback.
+                    $context['results'][] = check_plain('Processing Programs');
+
+                    // Update our progress information.
+                    $context['message'] = t('Processing Programs', array());
+
+                }
+                
+            }else {
+                 
+                $list_page = $page-1; 
+               
+                $results = eddy_services_get_listings(array('page' => $list_page, 'results_count' => sab_sitemap_programs_per_page), 'GetPrograms');
+                $list = array();
+
+                if(isset($results->GetProgramsResult->ProgramList)){
+
+                    $list = $results->GetProgramsResult->ProgramList;
+                    
+                    //$ids = array();
+                    //foreach($list as $k => $v){
+                        
+                    //    //For When the listings response comes back with Nested Campuses under Institutions
+                    //    if(isset($v->CampusList)){
+                            
+                    //        foreach($v->CampusList as $c){
+                                
+                    //            $ids[] = $c->CampusId;
+                                
+                    //        }
+                            
+                    //    }
+                    //    else if(isset($v->CampusId)){
+                            
+                    //        $ids[] = $v->CampusId;
+                            
+                    //    }
+                        
+                    //}
+
+                }
+
+                $xml = "";
+                foreach($list as $k => $v){
+                    
+                    $url = sab_program_details_create_url('institutions', $v);
+                     
+                    $xml .= '<url><loc>' . $base_root . '/'. $url . '</loc><lastmod>' . date('Y-m-d') . '</lastmod><changefreq>monthly</changefreq><priority>1.0</priority></url>';
+                  
+                }
+                
+                $output = _sab_sitemap_wrap_sitemap_list_xml($xml);
+                
+                if(!empty($context)) {
+                    // Store some result for post-processing in the finished callback.
+                    $context['results'][] = check_plain('Processing Program Links: Page ' . $page);
+                    
+                    // Update our progress information.
+                    $context['message'] = t('Processing Program Links Page: ' . $page, array());
+                }
+                
+            }
+            
+            cache_set($key, $output, 'cache_sab_sitemap');
+            
+        }
+        
+        if(empty($context)){
+            drupal_add_http_header('Content-Type', 'text/xml; charset=utf-8');
+            print $output;
+            drupal_exit();
+        }
+        
+        
+    }
+    catch(Exception $e){
+        
+        drupal_set_message("There was an error generating the Program Details sitemap.");
+        dpm($e);
+        
+    }
+
+}
+
+
+function _sab_sitmap_get_program_pages(){
+
+    $output = 0;
+
+    $results = eddy_services_get_listings(array('results_count' => 1), 'GetPrograms');
+        
+    if(!empty($results) && isset($results->GetProgramsResult->ResultCount)){
+        
+        $program_pages_count = $results->GetProgramsResult->ResultCount / sab_sitemap_programs_per_page;
+
+        $output = ceil($program_pages_count);
+    }
+
+    return $output;
+
+}
+
+
+
+/**
+ * Get All Aliases
+ */
+function _sab_sitemap_index(){
+    
+    $items = array('sitemap.xml', 'sitemap-programs.xml', 'sitemap-durations.xml', 'sitemap-work-types.xml');
+    
+    global $base_root;
+    
+    $xml = "";
+    
+    foreach($items as $item){
+
+        $xml .= '<sitemap>
+          <loc>' . $base_root . '/' . $item . '</loc>
+          <lastmod>' . date('Y-m-d') . '</lastmod>
+       </sitemap>';
+
+    }
+
+    $output = _sab_sitemap_wrap_sitemap_index_xml($xml);
+
+    drupal_add_http_header('Content-Type', 'text/xml; charset=utf-8');
+    print $output;
+    drupal_exit();
+
+}
+
+
+/**
+ * Returns the beginning and end of a formatted index sitemap.
+ */
+function _sab_sitemap_wrap_sitemap_index_xml($xml){
+
+    $output = '<?xml version="1.0" encoding="UTF-8"?>
+               <?xml-stylesheet type="text/xsl" href="/sitemap.xsl"?>
+               <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
+    
+    $output .= $xml;
+    
+    $output .= '</sitemapindex>';
+    
+    return $output;
+
+}
+
+/**
+ * Returns the beginning and end of a formatted list sitemap.
+ */
+function _sab_sitemap_wrap_sitemap_list_xml($xml){
+
+    $output = '<?xml version="1.0" encoding="UTF-8"?>
+               <?xml-stylesheet type="text/xsl" href="/sitemap.xsl"?>
+               <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
+    
+    $output .= $xml;
+    
+    $output .= "</urlset>";
+    
+    return $output;
+
+}
+
+/**
+ * Menu Callback which returns Product List query options.
+ */
+function _sab_sitemap_query_options($arg_1, $type, $qs_val, &$context = NULL){
+  
+    global $base_root;
+    
+    try{
+        
+        $qs = array_change_key_case(drupal_get_query_parameters($_GET, array('q')), CASE_LOWER);
+        
+        $key = "sab_sitemap_$type";
+        
+        if(!empty($qs_val)) {
+            switch($type){
+                case 'duration': 
+                    $key .= '_duration_' . $qs_val;        
+                    $qs['duration'] = $qs_val;        
+                    break; 
+                case 'work_type': 
+                    $key .= '_work_type_' . $qs_val;
+                    $qs['work_type'] = $qs_val;  
+                    break;
+            }
+        }
+        else if(!empty($qs)) {
+            if(isset($qs['duration'])){
+                $key .= '_duration_' . $qs['duration'];
+            }
+        
+            if(isset($qs['work_type'])){
+                $key .= '_work_type_' . $qs['work_type']; 
+            }
+        }
+
+        if($cache = cache_get($key, 'cache_sab_sitemap')){
+            
+            $output = $cache->data;
+            
+        }else {
+
+            $output=""; 
+            $close_url_set = TRUE;
+
+            $ptypes = array(); 
+
+            if($type == "duration") {
+                $ptypes =  array('Volunteer Abroad', 'Teach Abroad', 'Intern Abroad', 'Intensive Language'); 
+            } else if ($type == "work_type") {
+                $ptypes =  array('Volunteer Abroad', 'Intern Abroad'); 
+            }
+
+            $ptype_tids = _sab_sitemap_get_tids_by_term_names($ptypes, 'program_types') ;
+         
+            $q = db_select('node', 'n');
+            $q->join('eddy_product_list', 'p', "p.nid = n.nid and p.has_node = 1");
+            $q->join('eddy_faceted_nav_product_list_term_mapping', 'm', "p.plid = m.plid");
+            $q->leftJoin('field_data_field_external_id', 'ptype', "ptype.entity_id=m.program_type and ptype.entity_type='taxonomy_term' and ptype.bundle='program_types'"); 
+            $q->leftJoin('field_data_field_external_id', 'lvl', "lvl.entity_id=m.level and lvl.entity_type='taxonomy_term' and lvl.bundle='levels'"); 
+            $q->leftJoin('field_data_field_external_id', 'ctry', "ctry.entity_id=m.country and ctry.entity_type='taxonomy_term' and ctry.bundle='countries'"); 
+            $q->leftJoin('field_data_field_external_id', 'trm', "trm.entity_id=m.term and ctry.entity_type='taxonomy_term' and ctry.bundle='terms'"); 
+            $q->leftJoin('field_data_field_external_id', 'spc', "spc.entity_id=m.country and spc.entity_type='taxonomy_term' and ctry.bundle='specialties'"); 
+            $q->leftJoin('field_data_field_external_id', 'lan', "lan.entity_id=m.intensive_languages and lan.entity_type='taxonomy_term' and lan.bundle='intensive_languages'"); 
+            $q->leftJoin('field_data_field_external_id', 'aud', "aud.entity_id=m.country and aud.entity_type='taxonomy_term' and aud.bundle='placement_audiences'");
+
+            $q->condition('m.program_type', $ptype_tids, 'in');
+            $q->fields('n', array('nid', 'changed'));
+            $q->addField('ptype', 'field_external_id_value', 'program_type_id');
+            $q->addField('lvl', 'field_external_id_value', 'level_external_id');
+            $q->addField('ctry', 'field_external_id_value', 'country_external_id');
+            $q->addField('trm', 'field_external_id_value', 'term_external_id');
+            $q->addField('spc', 'field_external_id_value', 'specialty_external_id');
+            $q->addField('lan', 'field_external_id_value', 'language_external_id');
+            $q->addField('aud', 'field_external_id_value', 'audience_external_id');
+
+
+            $nodes = $q->execute()->fetchAll();
+
+            if(isset($nodes)){
+                
+                $xml = "";
+                
+                switch($type){  
+                    case 'duration':
+                        
+                        if(isset($qs['duration'])){
+                            
+                            foreach($nodes as $node) {
+                                $options = array(); 
+
+                                $options['results_count'] = 1; 
+                                $options['duration'] = array(_sab_sitemap_get_external_id_by_term_name($qs['duration'], 'durations')); 
+                                 
+                                if(isset($node->level_external_id)) {
+                                    $options['level'] = array($node->level_external_id); 
+                                }
+                                if(isset($node->country_external_id)) {
+                                    $options['country'] = array($node->country_external_id); 
+                                }
+                                if(isset($node->term_external_id)) {
+                                    $options['term'] = array($node->term_external_id);
+                                }
+                                if(isset($node->specialty_external_id)) {
+                                    $options['specialty'] = array($node->specialty_external_id);
+                                }
+                                if(isset($node->language_external_id)) {
+                                    $options['language'] = array($node->language_external_id);
+                                }
+                                if(isset($node->audience_external_id) ) {
+                                    $options['placement_audience'] = array($node->audience_external_id); 
+                                }
+                                if(isset($node->program_type_id)) {
+                                     $options['type'] = array($node->program_type_id); 
+                                }
+
+                                $results = eddy_services_get_listings($options, 'GetPrograms');
+                               
+                                if(!empty($results->GetProgramsResult->ProgramList)) {
+                                  
+                                    $xml .= '<url><loc>' . $base_root . url('node/' . $node->nid, array('query' => array('Duration' => $qs['duration'])))  . '</loc><lastmod>' . format_date($node->changed, 'custom', 'Y-m-d') . '</lastmod><changefreq>monthly</changefreq><priority>1.0</priority></url>';                                    
+                                } 
+                            }
+                   
+                            $output = _sab_sitemap_wrap_sitemap_list_xml($xml);
+                            
+                            if(!empty($context)) {
+                                // Store some result for post-processing in the finished callback.
+                                $context['results'][] = check_plain('Processing Duration: ' . $qs['duration']);
+                                
+                                // Update our progress information.
+                                $context['message'] = t('Processing Duration: ' . $qs['duration'], array());
+                            }
+                            
+                        }else{
+                            
+                            $durations =  get_sab_sitemap_terms_list('durations');  
+                                
+                            if(!empty($durations))   {    
+                                foreach($durations as $duration){
+                                    
+                                    $safe_name = sab_listing_create_safe_name($duration->name);
+
+                                    $xml .= '<sitemap><loc>' . $base_root . url('sitemap-durations.xml', array('query' => array('duration' => $safe_name))) . '</loc><lastmod>' . date('Y-m-d') . '</lastmod></sitemap>';
+                                    
+                                }
+                                
+                            }
+                            
+                            $output = _sab_sitemap_wrap_sitemap_index_xml($xml);
+                            
+                            if(!empty($context)) {
+                                // Store some result for post-processing in the finished callback.
+                                $context['results'][] = check_plain('Processing Durations Main Page');
+                                
+                                // Update our progress information.
+                                $context['message'] = t('Processing Durations Main Page', array());
+                            }
+                        }
+                        
+                        break;
+                    
+                    case 'work_type':
+                        
+                        if(isset($qs['work_type'])){
+                            
+                            foreach($nodes as $node) {
+                                $options = array(); 
+
+                                $options['results_count'] = 1; 
+
+                                $options['work_type'] = array(_sab_sitemap_get_external_id_by_term_name($qs['work_type'], 'work_types')); 
+                                
+                                if(isset($node->level_external_id)) {
+                                    $options['level'] = array($node->level_external_id); 
+                                }
+                                if(isset($node->country_external_id)) {
+                                    $options['country'] = array($node->country_external_id); 
+                                }
+                                if(isset($node->term_external_id)) {
+                                    $options['term'] = array($node->term_external_id);
+                                }
+                                if(isset($node->specialty_external_id)) {
+                                    $options['specialty'] = array($node->specialty_external_id);
+                                }
+                                if(isset($node->language_external_id)) {
+                                    $options['language'] = array($node->language_external_id);
+                                }
+                                if(isset($node->audience_external_id) ) {
+                                    $options['placement_audience'] = array($node->audience_external_id); 
+                                }
+                                if(isset($node->program_type_id)) {
+                                    $options['type'] = array($node->program_type_id); 
+                                }
+
+                                $results = eddy_services_get_listings($options, 'GetPrograms');
+                                
+                                if(!empty($results->GetProgramsResult->ProgramList)) {
+                                    
+                                    $xml .= '<url><loc>' . $base_root . url('node/' . $node->nid, array('query' => array('work_type' => $qs['work_type'])))  . '</loc><lastmod>' . format_date($node->changed, 'custom', 'Y-m-d') . '</lastmod><changefreq>monthly</changefreq><priority>1.0</priority></url>';                                    
+                                } 
+                            }
+                            
+                            $output = _sab_sitemap_wrap_sitemap_list_xml($xml);
+                            
+                            if(!empty($context)) {
+                                // Store some result for post-processing in the finished callback.
+                                $context['results'][] = check_plain('Processing Work Type: ' . $qs['work_type']);
+                                
+                                // Update our progress information.
+                                $context['message'] = t('Processing Work Type: ' . $qs['work_type'], array());
+                            }
+                           
+                        }else{
+                            
+                            $worktypes =  get_sab_sitemap_terms_list('work_types');  
+                            
+                            if(!empty($worktypes))   {    
+                                foreach($worktypes as $worktype){
+                                    
+                                    $safe_name = sab_listing_create_safe_name($worktype->name);
+
+                                    $xml .= '<sitemap><loc>' . $base_root . url('sitemap-work-types.xml', array('query' => array('work_type' => $safe_name))) . '</loc><lastmod>' . date('Y-m-d') . '</lastmod></sitemap>';
+                                    
+                                }
+                                
+                            }
+                            
+                            $output = _sab_sitemap_wrap_sitemap_index_xml($xml);
+                           
+                            if(!empty($context)) {
+                                // Store some result for post-processing in the finished callback.
+                                $context['results'][] = check_plain('Processing Work Types Main Page');
+                                
+                                // Update our progress information.
+                                $context['message'] = t('Processing Work Types Main Page', array());
+                            }
+                        }
+
+                        break;
+                    
+                }
+                
+            }
+            
+           cache_set($key, $output, 'cache_sab_sitemap');
+            
+        }
+      
+        if($context == NULL){
+            
+            drupal_add_http_header('Content-Type', 'text/xml; charset=utf-8');
+            print $output;
+            drupal_exit();
+            
+        }
+        
+    }
+    catch(Exception $e){
+        
+        drupal_set_message("There was an error generating the Location sitemap.");
+        dpm($e);
+        
+    }
+
+}
+
+
+/**
+ * Return the term id for a given term name.
+ */
+function _sab_sitemap_get_tids_by_term_names($term_names, $bundle) {
+    
+    $tids = array();
+    
+    try {
+        
+        $q = db_select('taxonomy_term_data', 't');
+        $q->join('field_data_field_external_id', 'e', "e.entity_id = t.tid and e.entity_type = 'taxonomy_term'");
+        $q->condition('e.bundle', $bundle);
+        $q->fields('t');
+        $q->fields('e');
+    
+        $results = $q->execute()->fetchAll();
+         
+        if(!empty($results)){
+            
+            foreach($results as $result){
+                
+                if(in_array($result->name, $term_names)){
+                    
+                    $tids[] = $result->tid;
+                }                
+            }         
+        }        
+    }
+    catch(Exception $e){
+        
+        dpm($e);
+        
+    }
+  
+    return $tids;
+    
+}
+/**
+ * Gets Taxonomy Terms for countries, states, campus_types, cities.
+ */
+function get_sab_sitemap_terms_list($term_bundle) {
+
+    $output =  null; 
+    
+    $query = new EntityFieldQuery();
+    $query = $query
+        ->entityCondition('entity_type', 'taxonomy_term')
+        ->entityCondition('bundle', $term_bundle);
+    
+    $results = $query->execute();
+    
+    if(isset($results['taxonomy_term'])){
+        
+        $output = taxonomy_term_load_multiple(array_keys($results['taxonomy_term']));
+    }
+    
+    return $output;
+    
+}
+
+
+/**
+ * Return the term id for a given term name.
+ */
+function _sab_sitemap_get_external_id_by_term_name($term_name, $bundle) {
+    
+    $tid = "";
+    
+    try {
+        
+        $q = db_select('taxonomy_term_data', 't');
+        $q->join('field_data_field_external_id', 'e', "e.entity_id = t.tid and e.entity_type = 'taxonomy_term'");
+        $q->condition('e.bundle', $bundle);
+        $q->fields('t');
+        $q->fields('e', array('field_external_id_value'));
+        $results = $q->execute()->fetchAll();
+        
+        if(!empty($results)){
+            
+            foreach($results as $result){
+                
+                $safe_name = sab_listing_create_safe_name($result->name);
+                
+                if($safe_name == $term_name) {
+                    
+                    $tid = $result->field_external_id_value;
+                }
+                
+            }
+            
+        }
+        
+    }
+    catch(Exception $e){
+        
+        dpm($e);
+        
+    }
+    
+    return $tid;
+    
+}
+
+
+/**
+ * Menu callback; Confirm rebuilding of the sitemap.
+ *
+ */
+function sab_sitemap_custom_rebuild_form($form, &$form_state) {
+
+    if (!empty($form_state['rebuild_form_submission']) && $form_state['rebuild_form_submission'] == '1'){
+        
+        drupal_set_message(t('Rebuilding Custom Sitemap Completed.'));
+    }
+    
+    $form = array(); 
+    
+    return confirm_form(
+      $form,
+      t('Are you sure you want to rebuild the custom links XML sitemap?'),
+      'admin/configgradsc/search/xmlsitemap',
+      '',
+      t('Rebuild Custom Links Sitemap'),
+      t('Cancel')
+    );
+}
+
+/**
+ * Form Submit handler; Calls the sitemap rebuild batch process.
+ */
+function sab_sitemap_custom_rebuild_form_submit($form, &$form_state) {
+    
+    try{
+        
+        cache_clear_all('sab_', 'cache_sab_sitemap', TRUE); 
+        
+        #region -Add Program Pages to Batch Process  
+        
+        $operations[] = array("_sab_sitemap_programs", array(1, 0));
+        
+        $pages_max = _sab_sitmap_get_program_pages();
+        if(!empty($pages_max)){
+            
+            for ($i = 1; $i < $pages_max; $i++){
+                $operations[] = array("_sab_sitemap_programs", array(1, $i));
+                
+            }
+        }
+        #endregion 
+        
+        #region - Add Duration Pages to Batch Process 
+        
+        $operations[] = array("_sab_sitemap_query_options", array(2, 'duration', NULL));
+        
+        $durations = get_sab_sitemap_terms_list('durations');  
+        
+        foreach($durations as $duration){
+            $safe_name = sab_listing_create_safe_name($duration->name);
+
+            $operations[] = array("_sab_sitemap_query_options", array(2, 'duration', $safe_name));                                    
+        }
+        #endregion
+        
+        
+        #region - Add Terms Pages to Batch Process 
+        
+        $operations[] = array("_sab_sitemap_query_options", array(2, 'work_type', NULL));
+        
+        $worktypes = get_sab_sitemap_terms_list('work_types');
+    
+        foreach($worktypes as $worktype){
+            $safe_name = sab_listing_create_safe_name($worktype->name);
+            
+            $operations[] = array("_sab_sitemap_query_options", array(2, 'work_type', $safe_name));                                    
+        }
+        #endregion 
+        
+        
+        $batch = array(
+           'operations' => $operations,
+           'finished' => 'sab_sitemap_batch_finished',
+           'title' => t('Rebuilding Custom Links'),
+           'init_message' => t('Rebuilding Custom Links batch process is starting.'),
+           'progress_message' => t('Processed @current out of @total.'),
+           'error_message' => t('Rebuilding Custom Links Batch has encountered an error.'),
+        );
+
+        batch_set($batch);
+        
+    }
+    catch(Exception $e){
+        
+        drupal_set_message("There was an error generating the custom sitemap.");
+        
+        watchdog("Rebuild Custom Sitemap", $e, array(), WATCHDOG_ERROR);
+        
+        dpm($e);
+        
+    }
+}
+
+/**
+ * Batch 'finished' callback
+ */
+function sab_sitemap_batch_finished($success, $results, $operations){
+    if ($success) {
+        
+        drupal_set_message('Rebuilding Custom Links Completed.');
+    }
+    else {
+        // An error occurred.
+        // $operations contains the operations that remained unprocessed.
+        $error_operation = reset($operations);
+        drupal_set_message(t('An error occurred while processing @operation with arguments : @args', array('@operation' => $error_operation[0], '@args' => print_r($error_operation[0], TRUE))));
+    }
+}

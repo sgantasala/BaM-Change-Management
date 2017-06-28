@@ -1,0 +1,94 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function eddy_pixels_menu() {
+	$items['admin/config/system/pixels'] = array(
+		'title' => 'EDDY Pixels',
+		'description' => 'Pixels that can be placed on the header or footer.',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('_eddy_pixels_get_form'),
+		'access arguments' => array('administer_eddy_pixels'),
+		'type' => MENU_NORMAL_ITEM,
+	);
+    
+	return $items;
+}
+
+function eddy_pixels_permission() {
+    return array(
+      'administer_eddy_pixels' => array(
+        'title' => 'Administer Pixel Settings'
+      ),
+    );
+}
+
+function _eddy_pixels_get_form($form, &$form_state) {
+    
+	$form['#submit'][] = '_eddy_pixel_save_pixels';
+
+	$form['eddy_pixels_field_header'] = array(
+		'#type' => 'textarea',
+		'#title' => t('Header Pixels'),
+		'#description' => t('This is to place the Pixels in Header section. You can retrieve this value in your module by using: <strong>variable_get(\'eddy_pixels_header\');</strong>'),
+		'#default_value' => variable_get('eddy_pixels_header'),
+	);
+
+	$form['eddy_pixels_field_footer'] = array(
+		'#type' => 'textarea',
+		'#title' => t('Footer Pixels'),
+		'#description' => t('This is to place the Pixels in Footer section. You can retrieve this value in your module by using: <strong>variable_get(\'eddy_pixels_footer\');</strong>'),
+		'#default_value' => variable_get('eddy_pixels_footer'),
+	);
+
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Save Pixels'),
+	);
+
+	return $form;
+}
+
+function _eddy_pixel_save_pixels($form, &$form_state){
+	
+	variable_set('eddy_pixels_header', $form_state['values']['eddy_pixels_field_header']);
+    variable_set('eddy_pixels_footer', $form_state['values']['eddy_pixels_field_footer']);
+    
+	drupal_set_message(t('The EDDY Pixels have been saved.'));	
+}
+
+
+function eddy_pixels_preprocess_html(&$variables) {
+
+    if(!path_is_admin(current_path())){
+        
+	    if(variable_get("eddy_pixels_header") != null) {
+		    $element = array(
+			    '#type' => 'markup',
+			    '#markup' => variable_get('eddy_pixels_header'),
+			    '#weight' => 10,
+		    );
+		    drupal_add_html_head($element, 'custom_html_head');
+            
+	    }
+        
+	    if(variable_get("eddy_pixels_footer") != null){
+            $variables['page']['page_bottom']['eddy_pixels_footer'] = array(
+            '#markup' => variable_get('eddy_pixels_footer'),
+            '#weight' => 99,
+        );
+            
+	    }
+        
+    }
+    
+
+}
+
+function eddy_pixels_enable() {
+	if(variable_get('eddy_pixels_footer') == null) {
+		variable_set('eddy_pixels_footer', '<img src="http://ads.yahoo.com/pixel?id=2462764&t=2" width="1" height="1" />'); 
+	}
+
+}

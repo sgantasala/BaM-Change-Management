@@ -1,0 +1,68 @@
+<?php
+
+
+function eddy_featured_schools_preprocess_page(&$vars){    
+    //eddy_featured_schools page ui support
+    if(isset($vars['node'])){
+        $node = $vars['node'];
+        if($node->type == 'featured_school_landing_page'){
+            if (property_exists($node, 'field_institution_tr'))
+            {
+                if (count( $node->field_institution_tr))
+                {             
+                    $institution_result = taxonomy_term_load($node->field_institution_tr[LANGUAGE_NONE][0]['tid']);
+                    if (!is_null($institution_result)) {
+                        
+                        $institution_taxonomy_term = $institution_result;
+                        
+                        if (property_exists($institution_taxonomy_term , 'field_external_id'))
+                        {
+                            if (count($institution_taxonomy_term->field_external_id))
+                            {
+                                drupal_add_js(array('eddy_featured_schools' => array('institutionid' =>  $institution_taxonomy_term->field_external_id[LANGUAGE_NONE][0]['value'])),'setting');
+                            }
+                        }
+                    }
+                }
+            }
+            if (property_exists($node, 'field_category_tr'))
+            {
+                if (count( $node->field_category_tr))
+                {                 
+                    $category_result = taxonomy_term_load($node->field_category_tr[LANGUAGE_NONE][0]['tid']);
+                    if (!is_null($category_result)) {
+                        $category_taxonomy_term = $category_result;
+                        if (property_exists($category_taxonomy_term , 'field_external_id'))
+                        {
+                            if (count($category_taxonomy_term->field_external_id))
+                            {
+                                drupal_add_js(array('eddy_featured_schools' => array('categoryid' =>  $category_taxonomy_term->field_external_id[LANGUAGE_NONE][0]['value'])),'setting');
+                            }
+                        }
+                    }
+                }
+            }
+            if (property_exists($node, 'field_subject_tr'))
+            {
+                if (count( $node->field_subject_tr))
+                {                 
+                    $subject_result = taxonomy_term_load($node->field_subject_tr[LANGUAGE_NONE][0]['tid']);
+                    if (!is_null($subject_result)) {
+                        $subject_taxonomy_term = $subject_result;
+                        if (property_exists($subject_taxonomy_term , 'field_external_id'))
+                        {
+                            if (count($subject_taxonomy_term->field_external_id))
+                            {
+                                drupal_add_js(array('eddy_featured_schools' => array('subjectid' =>  $subject_taxonomy_term->field_external_id[LANGUAGE_NONE][0]['value'])),'setting');
+                            }
+                        }
+                    }
+                }
+            }
+            drupal_add_js(drupal_get_path('module', 'eddy_featured_schools') . '/js/eddy_featured_schools.js', array('every_page' => true));
+        }
+    }
+}
+
+
+

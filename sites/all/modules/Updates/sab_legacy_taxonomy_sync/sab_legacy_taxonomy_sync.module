@@ -1,0 +1,516 @@
+<?php
+
+//update taxonomy countrterm
+function sab_legacy_taxonomy_sync_update_term($data,$vid)
+{
+	$existing_term = null;
+
+    try
+    {
+        if (!is_null($data[0]))
+        {
+            $current_name = $data[0];
+            //dpm($current_name);
+            
+            if(!is_null($current_name))
+            {
+                
+                
+                $current_term = sab_legacy_taxonomy_sync_get_term_by_name_and_vid(trim($current_name),$vid);
+                //dpm($current_term);
+
+                if(!is_null($current_term))
+                {     
+                    //Legacy Name
+                    if (!is_null($data[2]))
+                    {
+                        $current_legacy_name = $data[2];
+                        if(!is_null($current_legacy_name)){
+                            if (property_exists($current_term, 'field_legacy_name'))
+                            {                             
+                                if (count($current_term->field_legacy_name)>0){
+                                    
+                                    
+                                    if (count($current_term->field_legacy_name[LANGUAGE_NONE])>0) {
+                                        
+                                        $does_legacy_name_exist = false;
+                                        foreach ($current_term->field_legacy_name[LANGUAGE_NONE] as $termvalue) {
+                                            
+                                            if(in_array($current_legacy_name,$termvalue)){
+                                                $does_legacy_name_exist = true;
+                                                break;
+                                            }
+                                            
+                                        }
+                                        if(!$does_legacy_name_exist)
+                                        {                                       
+                                            $current_term->field_legacy_name[LANGUAGE_NONE][]['value'] = $current_legacy_name;
+                                        }
+                                    }
+                                }else{
+                                    $current_term->field_legacy_name[LANGUAGE_NONE][0]['value'] = $current_legacy_name;
+                                }
+                                
+                            }
+                        }
+                    }
+                    
+                    //Legacy External Id 
+                    if (!is_null($data[1]))
+                    {
+                        $current_legacy_external_id = $data[1];
+                        if(!is_null($current_legacy_external_id)){
+                            if (property_exists($current_term, 'field_legacy_external_id'))
+                            {                             
+                                if (count($current_term->field_legacy_external_id)>0){
+                                    
+                                    
+                                    if (count($current_term->field_legacy_external_id[LANGUAGE_NONE])>0) {
+                                        
+                                        $does_legacy_external_id_exist = false;
+                                        foreach ($current_term->field_legacy_external_id[LANGUAGE_NONE] as $termvalue) {
+                                            
+                                            if(in_array($current_legacy_external_id,$termvalue)){
+                                                $does_legacy_external_id_exist = true;
+                                                break;
+                                            }
+                                            
+                                        }
+                                        if(!$does_legacy_external_id_exist)
+                                        {
+                                            $current_term->field_legacy_external_id[LANGUAGE_NONE][]['value'] = $current_legacy_external_id;
+                                        }
+                                        
+                                    }
+                                }else{
+                                    $current_term->field_legacy_external_id[LANGUAGE_NONE][0]['value'] = $current_legacy_external_id;
+                                }
+                                
+                            }
+                        }
+                    }
+
+                    //Featured
+                    if (!is_null($data[3]))
+                    {
+                        $current_field_show_product_list = $data[3];
+                        if(!is_null($current_field_show_product_list)){
+                            if (property_exists($current_term, 'field_show_product_list'))
+                            {                             
+                                if (count($current_term->field_show_product_list)>0){
+                                    
+                                    
+                                    if (count($current_term->field_show_product_list[LANGUAGE_NONE])>0) {
+                                        
+                                        $does_field_show_product_list = false;
+                                        foreach ($current_term->field_show_product_list[LANGUAGE_NONE] as $termvalue) {
+                                            
+                                            if(in_array($current_field_show_product_list,$termvalue)){
+                                                $does_field_featured_exist = true;
+                                                break;
+                                            }
+                                            
+                                        }
+                                        if(!$does_field_show_product_list)
+                                        {
+                                            $current_term->field_show_product_list[LANGUAGE_NONE][]['value'] = $current_field_show_product_list;
+                                        }
+                                        
+                                    }
+                                }else{
+                                    $current_term->field_show_product_list[LANGUAGE_NONE][0]['value'] = $current_field_show_product_list;
+                                }
+                                
+                            }
+                        }
+                    }
+
+                    $existing_term  = $current_term;
+                }
+            }
+        } 
+    }
+    catch(Exception $e)
+    {
+        watchdog_exception('sab_legacy_taxonomy_sync', $e);
+    }
+	return $existing_term;
+}
+
+
+
+
+
+
+
+
+
+//function sab_legacy_taxonomy_sync_cron(){
+//    sab_legacy_taxonomy_sync_legacy_endeca_to_category_terms();
+//}
+
+//function sab_legacy_taxonomy_sync_node_view(){
+
+//    //dpm('teastasddddf');
+//    //$tree = taxonomy_get_tree(5);
+//    //foreach($tree as $key => $val){
+//    //    taxonomy_term_delete($val->tid);
+//    //}
+//   // sab_taxonomy_vocabulary_delete(13);
+    
+ 
+//    //sab_legacy_taxonomy_sync_legacy_endeca_to_category_terms();
+//   // sab_legacy_taxonomy_sync_legacy_endeca_to_subject_terms();
+
+//}
+
+//function sab_taxonomy_vocabulary_delete($vid) {
+
+//    dpm($vid);
+//    $vocabulary = taxonomy_vocabulary_load($vid);
+//    taxonomy_vocabulary_delete(11);
+//    dpm ($vocabulary);
+//}
+
+ 
+
+
+function sab_legacy_taxonomy_sync_get_term_by_name_and_vid($name,$vid)
+{
+    $existing_category_term = null;
+
+
+    try
+    {
+        
+        $existing_category_term_array = entity_load('taxonomy_term', FALSE, array('name' => trim($name),'vid' => $vid));
+        
+        if(!is_null($existing_category_term_array))
+        {    
+            // dpm($existing_category_term_array);
+            $first_key = key($existing_category_term_array);
+            
+            if(!is_null($first_key))
+            {
+                $existing_category_term = $existing_category_term_array[$first_key];
+            }
+        }
+    }
+    catch(Exception $e)
+    {
+        watchdog_exception('sab_legacy_taxonomy_sync', $e);
+    }
+
+    return $existing_category_term ;
+}
+
+function sab_legacy_taxonomy_sync_remove_duplicate_terms()
+{
+	
+    try
+    {
+        
+
+        $existing_category_term_array = entity_load('taxonomy_term', FALSE, array('vid' => 5));
+        
+        //foreach( $existing_category_term_array as $k => $v){
+        
+        //    $duplicate_category_term = entity_load('taxonomy_term', FALSE, array('name' => trim($v->name),'vid' => 11));
+        
+        //    if(!is_null($duplicate_category_term))
+        //    {
+        
+        //        $first_key = key($duplicate_category_term);
+        //        if(!is_null($first_key))
+        //        {
+        //            taxonomy_term_delete($first_key);
+        //        }
+        //    }
+        //}
+    }
+    catch(Exception $e)
+    {
+        dpm($e);
+        //watchdog_exception('gs_legacy_taxonomy_sync', $e);
+    }
+
+
+}
+////create taxonomy term and return the tid
+//function sab_legacy_taxonomy_sync_create_term($data, $vid)
+//{
+//    $current_name = null;
+    
+//    try
+//    {
+//        if (!is_null($data[5]))
+//        {
+//            $current_name = $data[5];
+            
+//            if(!is_null($current_name))
+//            {
+                
+//                $current_term = sab_legacy_taxonomy_sync_get_term_by_name_and_vid(trim($current_name),$vid);
+
+//                if(is_null($current_term))
+//                { 
+//                    $current_term= new stdClass();
+//                    $current_term->name=$current_name;
+//                    $current_term->vid=$vid;
+//                    taxonomy_term_save($current_term);
+//                }
+//            }
+//        }
+//    }
+//    catch(Exception $e)
+//    {
+//        watchdog_exception('sab_legacy_taxonomy_sync', $e);
+//    }
+//    return $current_term;
+//}
+
+////update taxonomy term
+//function sab_legacy_taxonomy_sync_update_term($data,$vid)
+//{
+//    $existing_term = null;
+
+//    try
+//    {
+//        if (!is_null($data[5]))
+//        {
+//            $current_name = $data[5];
+            
+//            if(!is_null($current_name))
+//            {
+                
+                
+//                $current_term = sab_legacy_taxonomy_sync_get_term_by_name_and_vid(trim($current_name),$vid);
+                
+
+//                if(!is_null($current_term))
+//                {     
+//                    //Legacy Name
+//                    if (!is_null($data[0]))
+//                    {
+//                        $current_legacy_name = $data[0];
+//                        if(!is_null($current_legacy_name)){
+//                            if (property_exists($current_term, 'field_legacy_name'))
+//                            {                             
+//                                if (count($current_term->field_legacy_name)>0){
+                                    
+                                    
+//                                    if (count($current_term->field_legacy_name[LANGUAGE_NONE])>0) {
+                                        
+//                                        $does_legacy_name_exist = false;
+//                                        foreach ($current_term->field_legacy_name[LANGUAGE_NONE] as $termvalue) {
+                                            
+//                                            if(in_array($current_legacy_name,$termvalue)){
+//                                                $does_legacy_name_exist = true;
+//                                                break;
+//                                            }
+                                            
+//                                        }
+//                                        if(!$does_legacy_name_exist)
+//                                        {                                       
+//                                            $current_term->field_legacy_name[LANGUAGE_NONE][]['value'] = $current_legacy_name;
+//                                        }
+//                                    }
+//                                }else{
+//                                    $current_term->field_legacy_name[LANGUAGE_NONE][0]['value'] = $current_legacy_name;
+//                                }
+                                
+//                            }
+//                        }
+//                    }
+                    
+//                    //Legacy URL Fragment
+//                    if (!is_null($data[1]))
+//                    {
+//                        $current_url_fragment = $data[1];
+//                        if(!is_null($current_url_fragment)){
+//                            if (property_exists($current_term, 'field_legacy_url_fragment'))
+//                            {                             
+//                                if (count($current_term->field_legacy_url_fragment)>0){
+                                    
+                                    
+//                                    if (count($current_term->field_legacy_url_fragment[LANGUAGE_NONE])>0) {
+                                        
+//                                        $does_url_fragment_exist = false;
+//                                        foreach ($current_term->field_legacy_url_fragment[LANGUAGE_NONE] as $termvalue) {
+                                            
+//                                            if(in_array($current_url_fragment,$termvalue)){
+//                                                $does_url_fragment_exist = true;
+//                                                break;
+//                                            }
+                                            
+//                                        }
+//                                        if(!$does_url_fragment_exist)
+//                                        {
+//                                            $current_term->field_legacy_url_fragment[LANGUAGE_NONE][]['value'] = $current_url_fragment;
+//                                        }
+                                        
+//                                    }
+//                                }else{
+//                                    $current_term->field_legacy_url_fragment[LANGUAGE_NONE][0]['value'] = $current_url_fragment;
+//                                }
+                                
+//                            }
+//                        }
+//                    }
+
+//                    //Legacy URL Fragment
+//                    if (!is_null($data[2]))
+//                    {
+                        
+//                        $current_external_id = $data[2];
+//                        if(!is_null($current_external_id)){
+//                            if (property_exists($current_term, 'field_external_id'))
+//                            {                             
+//                                if (count($current_term->field_external_id)>0){
+                                    
+                                    
+//                                    if (count($current_term->field_external_id[LANGUAGE_NONE])>0) {
+                                        
+//                                        $does_external_id_exist = false;
+//                                        foreach ($current_term->field_external_id[LANGUAGE_NONE] as $termvalue) {
+                                            
+//                                            if(in_array($current_external_id,$termvalue)){
+//                                                $does_external_id_exist = true;
+//                                                break;
+//                                            }
+                                            
+//                                        }
+//                                        if(!$does_external_id_exist)
+//                                        {
+//                                            $current_term->field_external_id[LANGUAGE_NONE][]['value'] = $current_external_id;
+//                                        }
+                                        
+//                                    }
+//                                }else{
+//                                    $current_term->field_external_id[LANGUAGE_NONE][0]['value'] = $current_external_id;
+//                                }
+                                
+//                            }
+//                        }
+//                    }
+                    
+                    
+                    
+//                    //DimensionValue
+//                    if (!is_null($data[3]))
+//                    {
+                        
+//                        $current_legacy_dimension_id = $data[3];
+//                        if(!is_null($current_legacy_dimension_id)){
+//                            if (property_exists($current_term, 'field_legacy_dimension_id'))
+//                            {                             
+//                                if (count($current_term->field_legacy_dimension_id)>0){
+                                    
+                                    
+//                                    if (count($current_term->field_legacy_dimension_id[LANGUAGE_NONE])>0) {
+                                        
+//                                        $does_legacy_dimension_id_exist = false;
+//                                        foreach ($current_term->field_legacy_dimension_id[LANGUAGE_NONE] as $termvalue) {
+                                            
+//                                            if(in_array($current_legacy_dimension_id,$termvalue)){
+//                                                $does_legacy_dimension_id_exist = true;
+//                                                break;
+//                                            }
+                                            
+//                                        }
+//                                        if(!$does_legacy_dimension_id_exist)
+//                                        {
+//                                            $current_term->field_legacy_dimension_id[LANGUAGE_NONE][]['value'] = $current_legacy_dimension_id;
+//                                        }
+                                        
+//                                    }
+//                                }else{
+//                                    $current_term->field_legacy_dimension_id[LANGUAGE_NONE][0]['value'] = $current_legacy_dimension_id;
+//                                }
+                                
+//                            }
+//                        }
+//                    }
+//                    //DimensionValueContextPath--ThreadID
+//                    if (!is_null($data[4]))
+//                    {
+                        
+//                        $current_legacy_dimension_context = $data[4];
+//                        if(!is_null($current_legacy_dimension_context)){
+//                            if (property_exists($current_term, 'field_legacy_dimension_context'))
+//                            {                             
+//                                if (count($current_term->field_legacy_dimension_context)>0){
+                                    
+                                    
+//                                    if (count($current_term->field_legacy_dimension_context[LANGUAGE_NONE])>0) {
+                                        
+//                                        $does_legacy_dimension_context_exist = false;
+//                                        foreach ($current_term->field_legacy_dimension_context[LANGUAGE_NONE] as $termvalue) {
+                                            
+//                                            if(in_array($current_legacy_dimension_context,$termvalue)){
+//                                                $does_legacy_dimension_context_exist = true;
+//                                                break;
+//                                            }
+                                            
+//                                        }
+//                                        if(!$does_legacy_dimension_context_exist)
+//                                        {
+//                                            $current_term->field_legacy_dimension_context[LANGUAGE_NONE][]['value'] = $current_legacy_dimension_context;
+//                                        }
+                                        
+//                                    }
+//                                }else{
+//                                    $current_term->field_legacy_dimension_context[LANGUAGE_NONE][0]['value'] = $current_legacy_dimension_context;
+//                                }
+                                
+//                            }
+//                        }
+//                    }
+//                    //Category
+//                    if (!is_null($data[7]))
+//                    {
+//                        dpm ($data[7]);
+//                        $current_field_category_tr = $data[7];
+//                        if(!is_null($current_field_category_tr)){
+//                            if (property_exists($current_term, 'field_category_tr'))
+//                            {                             
+//                                if (count($current_term->field_category_tr)>0){
+                                    
+                                    
+//                                    if (count($current_term->field_category_tr[LANGUAGE_NONE])>0) {
+                                        
+//                                        $does_category_tr_exist = false;
+//                                        foreach ($current_term->field_category_tr[LANGUAGE_NONE] as $termvalue) {
+                                            
+//                                            if(in_array($current_field_category_tr,$termvalue)){
+//                                                $does_category_tr_exist = true;
+//                                                break;
+//                                            }
+                                            
+//                                        }
+//                                        if(!$does_category_tr_exist)
+//                                        {
+//                                            dpm('5');
+//                                            $current_term->field_category_tr[LANGUAGE_NONE][]['tid'] = $current_field_category_tr;
+//                                            dpm($current_term);
+//                                        }
+                                        
+//                                    }
+//                                }else{
+//                                    $current_term->field_category_tr[LANGUAGE_NONE][0]['value'] = $current_field_category_tr;
+//                                }
+                                
+//                            }
+//                        }
+//                    }
+//                    $existing_term  = $current_term;
+//                }
+//            }
+//        } 
+//    }
+//    catch(Exception $e)
+//    {
+//        watchdog_exception('sab_legacy_taxonomy_sync', $e);
+//    }
+//    return $existing_term;
+//}

@@ -1,0 +1,6 @@
+name = EDDY Tracking
+description = Gets and sets global tracking variables.
+core = 7.x
+package = Eddy Core Business
+
+dependencies[] = eddy_core

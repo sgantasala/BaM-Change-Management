@@ -1,0 +1,63 @@
+<?php
+
+/**
+ * Implements hook_menu()
+ */
+function eddy_css_to_file_menu()
+{
+    $items = array();
+	
+    $items['eddy-css-to-file/%'] = array(
+        'title' => 'Add Global CSS',
+        'page callback' => '_theme_global_css_to_file',
+        'page arguments' => array(1),
+        'access arguments' => array('access content'),
+        'type' => MENU_CALLBACK,
+    );
+    
+    return $items;
+    
+}
+
+
+/**
+ * Implements hook_form_FORM_ID_alter() for `system_theme_settings`.
+ */
+function eddy_css_to_file_form_system_theme_settings_alter(&$form, &$form_state, $form_id) {
+
+    $form['#submit'][] = 'css_update_time';
+}
+
+/**
+ * Implements hook_preprocess_page()
+ */
+function eddy_css_to_file_preprocess_html(&$variables){    
+	$current_theme = variable_get('theme_default');
+    $css_url = 'd-style_' . variable_get('global_css_last_update') . '.css';
+
+    if(theme_get_setting('css', $current_theme) != ''){
+		drupal_add_css('/eddy-css-to-file/' . $css_url ,'external', array('weight' => 9999, 'group' => CSS_THEME));
+	}
+}
+
+/** 
+ * callback function to render and create global css from theme settings theme_get_setting('css', $theme) 
+ */
+function _theme_global_css_to_file() {
+
+	$css_output = ''; 
+    $current_theme = variable_get('theme_default');
+    $css_output = theme_get_setting('css', $current_theme);
+
+    drupal_add_http_header('Content-Type', 'text/css');
+	print $css_output;
+	drupal_exit();
+  
+}
+
+/**
+ * Form submission handler.
+ */
+function css_update_time($form, $form_state){
+    variable_set('global_css_last_update', strtotime(date("Y-m-d H:i:s")));
+}

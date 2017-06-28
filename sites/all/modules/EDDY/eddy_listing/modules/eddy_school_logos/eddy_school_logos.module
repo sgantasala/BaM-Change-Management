@@ -1,0 +1,73 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function eddy_school_logos_menu() {
+  $items['admin/workbench/content/school-logos-listings'] = array(
+    'title' => 'School Logos',
+    'description' => 'A list of school logos so teams can easily view missing logos.',
+    'page callback' => 'eddy_workbench_get_logos',
+	'type' => MENU_LOCAL_TASK,
+    'access callback' => 'user_access',
+    'access arguments' => array('view eddy logos worbench'),
+  );
+  return $items;
+}
+
+
+/**
+ * Implements hook_permission().
+ */
+ 
+function eddy_school_logos_permission() {
+  return array(
+    'view eddy logos worbench' => array(
+      'title' => t('View School Logos'),
+    ),
+  );
+}
+
+function cmp($a, $b) {
+    if ($a[1] == $b[1]) {
+        return 0;
+    }
+    return ($a[1] < $b[1]) ? -1 : 1;
+}
+
+function eddy_workbench_get_logos(){
+	$base_logo_url = get_base_content_url();
+	$options = array(
+		'results_count' => 500,
+		'sort_method' => 2,
+	);
+	
+	$results = eddy_services_get_listings($options, 'GetInstitutions');
+	
+	$school_list = array();
+	$rows = array();
+
+	if(!empty($results->GetInstitutionsResult->InstitutionList)){
+	
+		$school_list = $results->GetInstitutionsResult->InstitutionList;
+	
+		foreach ($school_list as $index => $row){
+			
+			//$count = $index + 1;
+			$name = $row->InstitutionName;
+			$logo_120 = '<img src="'.$base_logo_url.'logo/'. $row->InstitutionId .'/Logo_120x40.png"/>';
+			$logo_150 = '<img src="'.$base_logo_url.'logo/'. $row->InstitutionId .'/Logo_150x50.gif"/>';
+			$logo_280 = '<img src="'.$base_logo_url.'logo/'. $row->InstitutionId .'/Logo_240x80.gif"/>';
+			
+			array_push($rows, array($name, $logo_120, $logo_150, $logo_280));
+
+
+		}
+		
+		uasort($rows, 'cmp');
+	
+	}
+	
+	return theme('table', array('header' => array('School Name:','120x40:','150x50:','240x80:'), 'rows' => $rows,));
+
+}

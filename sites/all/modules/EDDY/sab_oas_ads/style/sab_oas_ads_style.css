@@ -1,0 +1,74 @@
+﻿body
+{
+}
+
+@media (min-width: 768px)
+{
+    #SlideUpInner
+    {
+        border-bottom-width: 0;
+        height: 87px;
+        margin-left: auto;
+        margin-right: auto;
+        padding: 0;
+        position: relative;
+        width: 1030px;
+    }
+
+
+    #closeAdvert
+    {
+        cursor: pointer;
+        text-decoration: underline;
+    }
+
+    #SlideUpContainer
+    {
+        background: url("../images/1px_background.gif") #000000 !important;
+        bottom: 0 !important;
+        position: fixed !important;
+        width: 100% !important;
+        /*height: 87px !important;*/
+    }
+
+    #BannerClose
+    {
+        margin: 10px;
+    }
+     #closeAdvertMobile
+    {
+        display: none;
+        overflow:hidden;
+        height:0px;
+    }
+}
+
+
+@media (max-width: 767px)
+{
+    #SlideUpContainer
+    {
+        background: url("../images/1px_background.gif") #000000 !important;
+        bottom: 0 !important;
+        position: fixed !important;
+        width: 100% !important;
+        height: 70px !important;
+    }
+     .SlideUpAd
+    {
+        text-align:center;
+        width: 100% !important;
+    }
+     #closeAdvertMobile
+    {
+        color:#fff;
+    }
+    #closeAdvert
+    {
+        display: none;
+    }
+     #BannerClose
+    {
+        margin: 15px;
+    }
+}

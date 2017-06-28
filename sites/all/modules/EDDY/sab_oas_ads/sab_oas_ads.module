@@ -1,0 +1,536 @@
+<?php
+require_once (dirname(__FILE__) . '/sab_oas_ads.inc');
+
+function sab_oas_ads_menu()
+{
+	$items = array();
+	try
+	{
+		$items['admin/structure/oas/manage'] = array(
+			'title' => 'Manage OAS Positions',
+			'description' => 'Manage OAS Ad Positions.',
+			'page callback' => '_sab_oas_ads_position_list'
+            ,
+            'access arguments' => array(
+                'sab_oas_ads_management'
+            )
+		);
+		$items['admin/structure/oas/manage/add'] = array(
+			'title' => 'Create OAS Ad position',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array(
+				'_sab_oas_ads_position_form',
+				'add'
+            ), 
+            'access arguments' => array(
+                'sab_oas_ads_management'
+            )
+		);
+		$items['admin/structure/oas/manage/%/edit'] = array(
+			'title' => 'Edit OAS Ad position',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array(
+				'_sab_oas_ads_position_form',
+				'edit',
+				4
+			), 
+            'access arguments' => array(
+                'sab_oas_ads_management'
+            )
+		);
+		$items['admin/structure/oas/manage/%/delete'] = array(
+			'title' => 'Delete OAS Ad position',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array(
+				'_sab_oas_ads_position_form',
+				'delete',
+				4
+			) ,
+            'access arguments' => array(
+                'sab_oas_ads_management'
+            )
+		);
+        
+        $items['internal/oas-midway-ad'] = array(
+			'page callback' => '_sab_oas_get_midway_ad',
+			'access callback' => TRUE,
+            'file' => 'sab_oas_ads.inc',
+		);
+
+        
+        
+        $items['admin/structure/oas/manage/site-page-paths'] = array(
+         'title' => 'View current OAS site page paths',
+         'page callback' => '_sab_oas_ads_site_page_path_list',
+          'access arguments' => array(
+               'sab_oas_ads_management'
+           )
+        );
+        $items['admin/structure/oas/manage/site-page-paths/csv'] = array(
+         'title' => 'View current OAS site page paths',
+         'page callback' => '_sab_oas_ads_site_page_path_list_csv',
+          'access arguments' => array(
+               'sab_oas_ads_management'
+           )
+        );
+
+	}
+
+	catch(Exception $e)
+	{
+		watchdog_exception('sab_oas_ads', $e);
+	}
+
+	return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function sab_oas_ads_permission() {
+	return array(
+		'sab_oas_ads_management' => array(
+		  'title' => 'Manage OAS ads'
+		),
+	);
+}	
+
+///**
+// * Implements template_preprocess_html().
+// */
+//function sab_oas_ads_preprocess_html(&$variables){
+
+    
+    
+//    //$block = module_invoke('sab_oas_ads', 'block_view', 'Position1');
+    
+//    //if(isset($block['content'])){
+        
+//    //    $variables['page']['page_bottom']['toster_ad'] = array(
+//    //            '#markup' => render($block['content']),
+//    //            '#weight' => 99,
+//    //        );
+
+//    //}
+    
+    
+
+    
+//}
+
+function _sab_oas_ads_position_list($arg1 = 'created')
+{
+	$output = "";
+	try
+	{
+		$results = sab_oas_ads_positions_list_paged(10, $arg1);
+		$header = array(
+			t('Name') ,
+			t('OAS Ad Position Id') ,
+			t('Description') ,
+			t('Status') ,
+			t('Created') ,
+			t('Updated') ,
+			t('Actions') ,
+		);
+		$rows = array();
+		foreach($results as $result)
+		{
+			$rows[] = array(
+				'name' => $result->name,
+				'oas_position_id' => $result->oas_position_id,
+				'description' => $result->description,
+				'status' => $result->status,
+				'created' => date("F j, Y, g:i a", $result->created) ,
+				'updated' => date("F j, Y, g:i a", $result->changed) ,
+				'actions' => l('Edit', 'admin/structure/oas/manage/' . $result->id . '/edit') . " | " . l('Delete', 'admin/structure/oas/manage/' . $result->id . '/delete')
+			);
+		}
+
+		$output.= '<ul class="action-links"><li>' . l('Add a new OAS Ad Postion', 'admin/structure/oas/manage/add') . '</li><li>' . l('Current Site Page List', 'admin/structure/oas/manage/site-page-paths') . '</li></ul>';
+   
+		$output.= theme('table', array(
+			'header' => $header,
+			'rows' => $rows
+		));
+        
+        
+		$output.= theme('pager');
+	}
+
+	catch(Exception $e)
+	{
+		watchdog_exception('sab_oas_ads', $e);
+	}
+
+	return $output;
+}
+
+function _sab_oas_ads_site_page_path_list()
+{
+	$output = "";
+	try
+	{
+        $output.= '<ul class="action-links"><li>' . l('Download Site Page Path List', 'admin/structure/oas/manage/site-page-paths/csv') . '</li></ul>';
+        $header = array(
+            t('Page') ,
+            t('Legacy Path') ,
+            t('Current Path') ,
+        );
+        
+        $rows = array();
+        $results = sab_oas_ads_get_site_page_path_list();
+
+        foreach ($results as $result) {
+            $rows[] = array(
+                'Page' => $result->title,
+                'Legacy Path' => sab_oas_ads_get_node_url_fragment($result, 'legacy'),
+                'Current Path' => ''
+            );
+        }
+
+        $output.= theme('table', array(
+            'header' => $header,
+            'rows' => $rows
+        ));
+        $output.= theme('pager');
+	}
+
+	catch(Exception $e)
+	{
+		watchdog_exception('sab_oas_ads', $e);
+	}
+
+	return $output;
+}
+
+function _sab_oas_ads_site_page_path_list_csv()
+{
+	$output = "";
+	try
+	{
+        drupal_add_http_header('Content-Type', 'text/csv; utf-8');
+        drupal_add_http_header('Content-Disposition', 'attachment; filename=OAS_Site_Pages.csv');
+
+        $header = array(
+           t('Page') ,
+           t('Legacy Path') ,
+           t('Current Path') ,
+       );
+        $keys = array();
+        foreach($header as $key => $value) {
+            $keys[] =$value;         
+        }
+        if ($keys) {
+            $output .= implode(",", $keys) . "\n";
+        }
+        $rows = array();
+        $results = sab_oas_ads_get_site_page_path_list();
+        foreach ($results as $result) {
+            $rows[] = array(
+                'Page' => $result->title,
+                'Legacy Path' => sab_oas_ads_get_node_url_fragment($result, 'legacy'),
+                'Current Path' => ''
+            );
+        }
+        foreach ($rows as $value) {
+            $output .= implode(",", $value) . "\n";
+        }
+        print $output;
+        exit;
+	}
+
+	catch(Exception $e)
+	{
+		watchdog_exception('sab_oas_ads', $e);
+	}
+
+	return $output;
+}
+
+function _sab_oas_ads_position_form($form, &$form_state, $action, $id = 0)
+{
+	try
+	{
+		$result = new stdclass();
+		if (($action == 'edit' or $action == 'delete') && $id > 0)
+		{
+			$result = sab_oas_ads_get_position_by_id($id);
+            
+		}
+
+		$form['id'] = array(
+			'#type' => 'hidden',
+			'#default_value' => $id,
+			'#size' => 60,
+			'#maxlength' => 20,
+			'#required' => TRUE,
+		);
+
+		// render form ui by action type
+
+		switch ($action)
+		{
+            case 'add':
+            case 'edit':
+                $form['name'] = array(
+                    '#type' => 'textfield',
+                    '#title' => t('Name') ,
+                    '#default_value' => (!empty($result->name)) ? $result->name : '',
+                    '#size' => 60,
+                    '#maxlength' => 128,
+                    '#required' => TRUE,
+                );
+                $form['oas_position_id'] = array(
+                    '#type' => 'textfield',
+                    '#title' => t('OAS Ad Position Id') ,
+                    '#default_value' => (!empty($result->oas_position_id)) ? $result->oas_position_id : '',
+                    '#size' => 60,
+                    '#maxlength' => 128,
+                    '#required' => TRUE,
+                );
+                $form['is_mobile_position'] = array(
+                    '#type' => 'checkbox',
+                    '#title' => t('Mobile Ad') ,
+                    '#default_value' => (!empty($result->is_mobile_position)) ? $result->is_mobile_position : 0,
+                    '#size' => 60,
+                    '#maxlength' => 1
+                  
+                );
+                $form['description'] = array(
+                    '#type' => 'textarea',
+                    '#title' => t('Description') ,
+                    '#default_value' => (!empty($result->description)) ? $result->description : '',
+                );
+                break;
+
+            case 'delete':
+                drupal_set_message(t('Are you sure you want to delete this Ad Position: %name?', array(
+                    '%name' => $result->name
+                )) , 'warning');
+                break;
+		}
+
+		$form['actions'] = array(
+			'#type' => 'actions'
+		);
+		switch ($action)
+		{
+            case 'add':
+                $form['actions']['update'] = array(
+                    '#type' => 'submit',
+                    '#value' => t('Create') ,
+                    '#submit' => array(
+                        '_sab_oas_ads_position_save'
+                    ) ,
+                );
+                break;
+
+            case 'edit':
+                $form['actions']['update'] = array(
+                    '#type' => 'submit',
+                    '#value' => t('Update') ,
+                    '#submit' => array(
+                        '_sab_oas_ads_position_save'
+                    ) ,
+                );
+                break;
+
+            case 'delete':
+                $form['actions']['delete'] = array(
+                    '#type' => 'submit',
+                    '#value' => t('delete') ,
+                    '#submit' => array(
+                        '_sab_oas_ads_position_delete'
+                    ) ,
+                );
+                break;
+		}
+
+		$form['actions']['cancel'] = array(
+			'#markup' => l(t('Cancel') , 'admin/structure/oas/manage') ,
+			'#weight' => 20,
+		);
+	}
+
+	catch(Exception $e)
+	{
+		watchdog_exception('sab_oas_ads', $e);
+	}
+
+	return $form;
+}
+
+function _sab_oas_ads_position_save($form, &$form_state)
+{
+	$updateed_position = null;
+	$fields = $form_state['values'];
+	$position = array(
+		'id' => $fields['id'],
+		'name' => $fields['name'],
+		'description' => $fields['description'],
+		'oas_position_id' => $fields['oas_position_id'],
+        'is_mobile_position' => $fields['is_mobile_position'],
+	);
+	$response_message = sab_oas_ads_position_save($position);
+	drupal_get_messages();
+	if ($response_message['success'])
+	{
+		drupal_set_message("Your Position was saved.");
+		drupal_goto('admin/structure/oas/manage');
+	}
+	else
+	{
+		drupal_set_message("There was problem saving your position.");
+		drupal_goto('admin/structure/oas/manage');
+	}
+}
+
+function _sab_oas_ads_position_delete($form, &$form_state)
+{
+	$status_message = 'There was a problem deleting this your Ad position';
+	$status_type = 'error';
+	$fields = $form_state['values'];
+	if (isset($fields['id']))
+	{
+		if (is_numeric($fields['id']))
+		{
+			if (sab_oas_ads_position_delete($fields['id']))
+			{
+				$status_message = "Your ad position has been deleted.";
+				$status_type = 'status';
+			}
+		}
+	}
+
+	drupal_get_messages();
+	drupal_set_message($status_message, $status_type);
+	drupal_goto("admin/structure/oas/manage");
+}
+
+function sab_oas_ads_file_download()
+{
+
+	// Merge remainder of arguments from GET['q'], into relative file path.
+
+	$args = func_get_args();
+	$scheme = array_shift($args);
+	$target = implode('/', $args);
+	$uri = $scheme . '://' . $target;
+	if (file_stream_wrapper_valid_scheme($scheme) && file_exists($uri))
+	{
+		$headers = file_download_headers($uri);
+		if (count($headers))
+		{
+			file_transfer($uri, $headers);
+		}
+
+		drupal_access_denied();
+	}
+	else
+	{
+		drupal_not_found();
+	}
+
+	drupal_exit();
+}
+
+function sab_oas_ads_block_info()
+{
+	$blocks = array();
+	try
+	{
+		$max_ad_positions = 100;
+		$ad_postions = sab_oas_ads_positions_list_paged($max_ad_positions, 'created');
+        foreach($ad_postions as $ad_postion)
+		{
+            
+			$blocks[$ad_postion->oas_position_id] = array(
+				'info' => t('sab: OAS Ad Postion ' . $ad_postion->name) ,
+				'cache' => DRUPAL_CACHE_PER_PAGE,
+			);
+		}
+	}
+
+	catch(Exception $e)
+	{
+		watchdog_exception('sab_oas_ads', $e);
+	}
+
+	return $blocks;
+}
+
+function sab_oas_ads_page_alter(&$page)
+{
+	try
+	{
+		$max_ad_positions = 100;
+        
+		$oas_ad_position_string = implode(",", sab_oas_ads_positions_id_array($max_ad_positions, 'created'));
+   
+		sab_oas_ads_set_multiple_position_script($oas_ad_position_string);
+	}
+
+	catch(Exception $e)
+	{
+		watchdog_exception('sab_oas_ads', $e);
+	}
+
+	return $page;
+}
+
+//function sab_oas_ads_block_view_alter(&$data, $block) {
+
+//    if (isset($data['content']) && is_array($data['content'])) {
+//        $contextual_links = array(
+//          'contextual',
+//          array($block->module),
+//        );
+
+//       // $data['content']['#contextual_links']['contextual_links_oas_manage'] = 'admin/structure/oas/manage';
+//    }
+
+//}
+
+function sab_oas_ads_contextual_links_view_alter(&$element, &$items) {
+
+    $max_ad_positions = 100;
+    if(isset($element['#element']['#block'])){
+        if (in_array ( $element['#element']['#block']->delta ,  sab_oas_ads_positions_id_array($max_ad_positions, 'created'))){
+            
+            
+            $element['#links']['manage-oas-ads'] = array(
+              'title' => 'Manage Oas Ads',
+             'href' => url('admin/structure/oas/manage', array('absolute' => TRUE)),
+            );
+            
+            
+        }
+    }
+
+}
+
+function sab_oas_ads_block_view($delta = '')
+{
+	try
+	{
+       
+		$block['content'] = sab_oas_ads_contents($delta);
+        
+	}
+
+	catch(Exception $e)
+	{
+		watchdog_exception('sab_oas_ads', $e);
+	}
+
+	return $block;
+}
+
+function sab_oas_ads_contents($which_block)
+{
+	$result = array(
+		'#markup' => sab_oas_ads_render_ad($which_block) ,
+	);
+	return $result;
+}

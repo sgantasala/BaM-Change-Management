@@ -1,0 +1,6 @@
+name = Eddy Scholarship Contest
+description = Eddy Scholarship Contest Module
+core = 7.x
+package = Eddy Core Business
+
+stylesheets[all][] = style/eddy_scholarship_style_bootstrap.css

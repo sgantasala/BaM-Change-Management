@@ -1,0 +1,223 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function eddy_help_menu() {
+    
+	$items = array();
+	
+	$items['eddy-help'] = array(
+      'title' => 'EDDY Help',
+	  'page callback' => '_eddy_help_view_overview',
+	  //'access callback' => TRUE,
+	  'access arguments' => array('eddy_help_view_results'),
+    );
+	
+	$items['eddy-help/%'] = array(
+	  'title' => 'EDDY Help',
+      'page callback' => '_eddy_help_view_overview',
+	  'page arguments' => array(1),
+	  'access arguments' => array('eddy_help_view_results'),
+    );
+	
+	$items['eddy-help/add'] = array(
+	  'title' => 'Create EDDY Help Item',
+	  'page callback' => 'drupal_get_form',
+	  'page arguments' => array('_eddy_help_edit_form', 'add'),
+	  'access arguments' => array('eddy_help_create'),
+	  'file' => 'eddy_help.admin.inc',
+    );
+	
+	$items['eddy-help/%/edit'] = array(
+	  'title' => 'Edit EDDY Help Item',
+	  'page callback' => 'drupal_get_form',
+	  'page arguments' => array('_eddy_help_edit_form', 'edit', 1),
+	  'access arguments' => array('eddy_help_edit'),
+	  'file' => 'eddy_help.admin.inc',
+    );
+	
+	$items['eddy-help/%/delete'] = array(
+	  'title' => 'Edit EDDY Help Item',
+	  'page callback' => 'drupal_get_form',
+	  'page arguments' => array('_eddy_help_delete_confirm', 1),
+	  'access arguments' => array('eddy_help_delete'),
+	  'file' => 'eddy_help.admin.inc',
+    );
+	
+	$items['eddy-help/json/get-items'] = array(
+	  'page callback' => '_eddy_help_items_json',
+	  'access callback' => TRUE,
+    );
+
+    return $items;
+	
+}
+
+/**
+ * Implements hook_permission().
+ */
+function eddy_help_permission() {
+	
+	$items = array();
+	
+	$items['eddy_help_view'] = array(
+	  'title' => t('EDDY Help: Can View Page'),
+	);
+	
+	$items['eddy_help_view_results'] = array(
+	  'title' => t('EDDY Help: Can View Results'),
+	);
+	
+	$items['eddy_help_create'] = array(
+	  'title' => t('EDDY Help: Can Create'),
+	);
+	
+	$items['eddy_help_edit'] = array(
+	  'title' => t('EDDY Help: Can Edit'),
+	);
+	
+	$items['eddy_help_delete'] = array(
+	  'title' => t('EDDY Help: Can Delete'),
+	);
+  
+	return $items;
+
+}
+
+/**
+* Implements hook_admin_paths_alter()
+*/
+function eddy_help_admin_paths_alter(&$paths) {
+    $paths['eddy-help'] = TRUE;
+	$paths['eddy-help/*'] = TRUE;
+}
+
+
+/**
+ * Implements hook_theme().
+ */
+function eddy_help_theme() {
+  return array(
+    'eddy_help_help_section' => array(
+      'variables' => array('vars' => NULL),
+      'template' => 'eddy-help-help-section',
+    ),
+  );
+}
+
+
+/**
+ * Implements hook_help().
+ */
+function eddy_help_help($path, $arg) {
+
+	switch ($path) {
+		
+		case 'admin/help#eddy_help':
+	
+			$results = db_select('eddy_help', 'e')
+			->fields('e')
+			->condition('status', 1)
+			->orderby('title', 'DESC')
+			->execute()
+			->fetchAllAssoc('id');
+
+			$output = '';
+			$output .= theme("eddy_help_help_section", array('results' => $results, 'can_edit' => user_access('eddy_help_edit')));
+			
+			return $output;
+		
+		break;
+		
+	}
+
+}
+
+/**
+ * Callback to eddy_help menu().
+ */
+function _eddy_help_view_overview($arg1 = 'created') {
+
+	$output = "";
+	$order_by  = 'created';
+	
+	$allowed = array('title', 'created', 'updated');
+	
+	$arg1 = str_replace('-', '_', $arg1);
+	
+	if(in_array($arg1, $allowed)){
+	
+		$order_by = $arg1;
+		
+	}
+
+	$results = db_select('eddy_help', 'e')
+    ->fields('e')
+	->orderby($order_by, 'DESC')
+	->extend('PagerDefault')
+	->limit(10)
+    ->execute()
+    ->fetchAllAssoc('id');
+	
+	// Using the JSON endpoint to get the results. More work is needed here.
+	// $options = array(
+		// 'headers' => array(
+			// "Content-Type" => "application/json", 
+			// "Accept" => "application/json; charset=utf-8",
+		// ),
+		// 'method' => 'GET'
+	// );
+	
+	// $server = $_SERVER['SERVER_NAME'];
+	// $json_results = drupal_http_request("http://$server/eddy-help/json/get-items", $options);
+	// dpm(json_decode($json_results->data));
+
+	$header = array(
+		//l(t('Title'), 'eddy-help'),
+		t('Title'), 
+		t('Description'),
+		t('Created'),
+		t('Updated'),
+		t('Status'),
+		t('Operations'),
+	);
+	  
+	$rows = array();
+	foreach ($results as $result) {
+		
+		$rows[] = array(
+			'title' => $result->title, 
+			'description' => $result->description, 
+			'created' => date("F j, Y, g:i a", $result->created),
+			'updated' => date("F j, Y, g:i a", $result->changed),
+			'status' => $result->status,
+			'operations' => l('Edit', 'eddy-help/' . $result->id . '/edit') . " | " . l('Delete', 'eddy-help/' . $result->id . '/delete')
+		);
+		
+	}
+	
+	if(user_access('eddy_help_edit'))
+		$output .= '<ul class="action-links"><li>' . l('Create a Help Item', 'eddy-help/add') . '</li></ul>';
+	
+	$output .= theme('table', array('header' => $header, 'rows' => $rows));
+	$output .= theme('pager');
+	
+	return $output;
+
+}
+
+/**
+ * Callback to eddy_help menu().
+ */
+function _eddy_help_items_json(){
+
+	$results = db_select('eddy_help', 'e')
+	->fields('e')
+	->execute()
+	->fetchAllAssoc('id');
+	
+	print drupal_json_output($results);
+	drupal_exit();
+	
+}

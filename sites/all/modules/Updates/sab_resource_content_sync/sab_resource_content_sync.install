@@ -1,0 +1,139 @@
+<?php
+
+ 
+/**
+ * Add Resource Contents
+ */
+function sab_resource_content_sync_update_7001()
+{
+    
+    try{
+
+        db_set_active('sab_new');
+        
+        $results = db_select('vw_sab_resource', 'c')
+        ->fields('c')
+        ->execute()
+        ->fetchAll();
+        
+        db_set_active();
+        
+        
+        if(count($results) > 0){
+            
+            foreach($results as $k => $v){
+
+                $node = sab_resource_node_basic_properties();
+                $article =taxonomy_get_term_by_name($v->ArticleCategory);
+                $article_term =current($article);
+                $tid=$article_term->tid;
+                
+                //dpm($v->ThreadID);
+
+                $node->title = $v->Subject;
+                $node->body[$node->language][0]['value'] =sab_resource_content_sync_update_content_url_path($v->content);
+            
+                $node->field_article_category_tr[LANGUAGE_NONE][0]['tid'] = $tid;
+                $node->field_legacy_external_id[LANGUAGE_NONE][0]['value'] = $v->ThreadID;
+                
+                
+                $url_segments = array(
+                 'resources',
+                 $v->PostName,
+                 );
+                $node->path['pathauto'] = FALSE;
+                $node->path['alias'] = implode('/', $url_segments);
+
+                $node = node_submit($node);
+                   node_save($node);
+
+       
+                
+            }
+        }
+         drupal_set_message("Articles have been added."); 
+    }
+    
+    catch(Exception $e){
+        dpm($e);
+        db_set_active();
+       
+    }
+
+  
+}
+
+
+/**
+ * Add Country Contents
+ */
+function sab_resource_content_sync_update_7002()
+{
+
+   
+    try{
+
+           db_set_active('sab_new');
+        
+        $results = db_select('vw_sab_country', 'c')
+        ->fields('c')
+        ->execute()
+        ->fetchAll();
+        
+        db_set_active();
+        
+        
+        if(count($results) > 0){
+            
+            foreach($results as $k => $v){
+
+
+                $url ="in-".sab_migration_clean_url_segment($v->CountryName);
+                $path=drupal_get_normal_path($url); 
+                $source = explode('/', $path);
+                $plid =$source[1];
+              
+                if (!empty($plid))
+                {
+
+                  //  $product = sab_product_list_view($plid);
+                   
+                    $node = sab_productlist_node_basic_properties();
+                    $node->title = $v->Subject;
+                    $node->body[$node->language][0]['value'] =sab_resource_content_sync_update_content_url_path($v->content);
+          
+                    $node->field_legacy_url_fragment[LANGUAGE_NONE][0]['value'] = $v->PostName;
+
+
+                    $node->field_legacy_external_id[LANGUAGE_NONE][0]['value'] = $v->ThreadID;
+                    
+                    $node->metatags[$node->language]['description']['value'] = $v->MetaDescription;
+                    $node->metatags[$node->language]['keywords']['value'] = $v->MetaKeywords;
+                    $node->path['pathauto'] = FALSE;
+
+                    $node = node_submit($node);
+                    node_save($node);
+               
+                 
+
+                    db_update('eddy_product_list')->fields(array('has_node' => 1, 'nid' => $node->nid))->condition('plid', $plid)->execute();
+
+                    db_update('url_alias')->fields(array('source' => 'node/'. $node->nid ))->condition('source', 'product_list/' . $plid)->execute();
+
+                   
+                } 
+                
+            }
+        }
+        drupal_set_message("Product List have been added."); 
+    }
+    
+    catch(Exception $e){
+        dpm($e);
+        db_set_active();
+        
+    }
+
+    
+}
+ 

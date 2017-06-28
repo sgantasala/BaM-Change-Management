@@ -1,0 +1,78 @@
+<?php
+
+/**
+ * @file
+ * Install and un-install tasks live in this file.
+ */
+/**
+ * Implements hook_schema().
+ */
+ 
+function sab_sitemap_schema() {
+	
+    $schema['eddy_xml_sitemap_log'] = array(
+		'description' => 'Stores job run details and any errors',
+		'fields' => array(
+			'lid' => array(
+							'type' => 'serial',
+							'unsigned' => TRUE,
+							'not null' => TRUE,
+                            'description' => 'The primary identifier for a job log list.',
+			),
+			'start_time' => array(
+							'type'        => 'int',
+							'unsigned'    => TRUE,
+							'not null'    => TRUE,
+							'default'     => 0,
+							'description' => "The job start date time"
+			),
+            'end_time' => array(
+							'type'        => 'int',
+							'unsigned'    => TRUE,
+							'not null'    => FALSE,
+							'default'     => 0,
+							'description' => "The job end date time"
+			),
+            'matching_calls_count' => array(
+							'type' => 'int',
+							'unsigned' => TRUE,
+							'not null' => FALSE,
+							'default' => 0,
+                            'description' => 'The number of calls made to ME in the current job.',
+			),
+            'matching_error' => array(
+	            'type' => 'int',
+                'not null' => FALSE,
+                'size' => 'tiny',
+                'default' => 0,
+            ), 
+		),
+    
+        'primary key' => array('lid'),
+      
+    );
+    
+    return $schema;
+}
+
+
+
+/**
+ * Implements hook_install().
+ * Creates Cache table.
+ */
+function sab_sitemap_install() {
+	
+	db_create_table('cache_sab_sitemap', drupal_get_schema_unprocessed('system', 'cache'));
+	
+}
+
+/**
+ * Implements hook_uninstall().
+ * Drops Cache table.
+ */
+function sab_sitemap_uninstall() {
+	
+	db_drop_table('cache_sab_sitemap');
+	
+}

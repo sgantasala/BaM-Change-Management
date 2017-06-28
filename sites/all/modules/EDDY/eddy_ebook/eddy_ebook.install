@@ -1,0 +1,178 @@
+<?php
+//Tabled because form was to unstable
+//function eddy_ebook_install()
+//{
+//    dpm('eddy_ebook_install');
+//    $node = new stdClass();
+//    $node->type = 'webform';
+//    node_object_prepare($node);
+//    $node->title = 'EBook Webform Test';
+//    $node->language = LANGUAGE_NONE;
+//    $node->body[LANGUAGE_NONE][0]['value']   = '';
+//    $node->body[LANGUAGE_NONE][0]['format']  = 'full_html';
+//    $node->uid = 1;
+//    $node->promote = 0;
+//    $node->comment = 0;
+    
+//    $components = array(
+//                array(
+//            'name' => 'First name',
+//            'form_key' => 'FirstName',
+//            'type' => 'textfield',
+//            'mandatory' => 1,
+//            'weight' => 10,
+//            'pid' => 0,
+//            'extra' => array(
+//            'title_display' => ' before',
+//            'private' => 0,
+//            ),
+//        ),
+//                array(
+//            'name' => 'Last name',
+//            'form_key' => 'LastName',
+//            'type' => 'textfield',
+//            'mandatory' => 1,
+//            'weight' => 5,
+//            'pid' => 0,
+//            'extra' => array(
+//            'title_display' => ' before',
+//            'private' => 0,
+//            ),
+//        ),
+//                array(
+//            'name' => 'Email address',
+//            'form_key' => 'Email',
+//            'type' => 'email',
+//            'mandatory' => 1,
+//            'weight' => 25,
+//            'pid' => 0,
+//            'extra' => array(
+//            'title_display' => ' before',
+//            'private' => 0,
+//            ),
+//        ),
+//                        array(
+//            'name' => 'Zip Code',
+//            'form_key' => 'PostalCode',
+//            'type' => 'textfield',
+//            'mandatory' => 1,
+//            'weight' => 5,
+//            'pid' => 0,
+//            'extra' => array(
+//            'title_display' => ' before',
+//            'private' => 0,
+//            ),
+//        ),
+//                        array(
+//            'name' => 'Start Month',
+//            'form_key' => 'start_month',
+//            'type' => 'select',
+//            'mandatory' => 0,
+//            'weight' => 30,
+//            'pid' => 0,
+//            'extra' => array(
+//            'title_display' => ' before',
+//            'private' => 0,
+//            'items' => "January|January\n
+//        February|February\n
+//        March|March\n
+//        April|April\n
+//        May|May\n
+//        June|June\n
+//        July|July\n
+//        August|August\n
+//        September|September\n
+//        October|October\n
+//        November|November\n
+//        December|December",
+//            'aslist' => 1,
+//            ),
+//        ),
+//                            array(
+//            'name' => 'Start Year',
+//            'form_key' => 'start_year',
+//            'type' => 'select',
+//            'mandatory' => 0,
+//            'weight' => 30,
+//            'pid' => 0,
+//            'extra' => array(
+//            'title_display' => ' before',
+//            'private' => 0,
+//            'items' => "2015|2015\n
+//        2016|2016",
+//            'aslist' => 1,
+//            ),
+//        ),
+//                            array(
+//            'name' => 'Newsletter',
+//            'form_key' => 'newsletter',
+//            'type' => 'select',
+//            'mandatory' => 0,
+//            'weight' => 30,
+//            'pid' => 0,
+//            'extra' => array(
+//            'title_display' => ' before',
+//            'private' => 0,
+//            'items' => "1|Yes, please send me emails containing MBA bonus materials and the monthly newsletter from GradSchools.com.",
+//            'aslist' => 0,
+//            'multiple' => 1,
+//            ),
+//        ),
+//                                                array(
+//            'name' => 'source',
+//            'form_key' => 'Source',
+//            'type' => 'hidden',
+//            'mandatory' => 1,
+//            'weight' => 30,
+//            'pid' => 0,
+//            'value' => 'mbaebook',
+//            'extra' => array(
+//            'title_display' => ' before',
+//            'private' => 0
+
+//            ),
+//        )
+//    );
+    
+    
+    
+//    // Setup notification email.
+//    $emails = array(
+//      array(
+//        'email' => 'somebody@example.com',
+//        'subject' => 'default',
+//        'from_name' => 'default',
+//        'from_address' => 'default',
+//        'template' => 'default',
+//        'excluded_components' => array(),
+//      ),
+//    );
+
+//    // Attach the webform to the node.
+//    $node->webform = array(
+//      'confirmation' => '<p>You are now signed up to receive The MBA Admissions Secrets e-Book.</p>',
+//      'confirmation_format' => 'full_html',
+//      'redirect_url' => '<none>',
+//      'status' => '1',
+//      'block' => '1',
+//      'teaser' => '0',
+//      'allow_draft' => '0',
+//      'auto_save' => '0',
+//      'submit_notice' => '1',
+//      'submit_text' => '',
+//      'submit_limit' => '-1', // User can submit more than once.
+//      'submit_interval' => '-1',
+//      'total_submit_limit' => '-1',
+//      'total_submit_interval' => '-1',
+//      'record_exists' => TRUE,
+//      'roles' => array(
+//        0 => '1',
+//        1 => '2',// Anonymous user can submit this webform.
+//      ),
+//      'emails' => $emails,
+//      'components' => $components,
+//    );
+
+//    // Save the node.
+//    node_save($node); 
+//}

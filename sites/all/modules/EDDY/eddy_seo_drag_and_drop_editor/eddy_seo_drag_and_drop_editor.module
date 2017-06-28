@@ -1,0 +1,588 @@
+<?php
+
+/**
+ * Implements hook_page_alter().
+ */
+function eddy_seo_drag_and_drop_editor_menu() {
+
+    $items['node/%/edit-css'] = array(
+        'title' => 'Edit CSS',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('eddy_seo_drag_and_drop_editor_edit_css', 1),
+        'access callback' => 'eddy_seo_drag_and_drop_editor_node_access',
+        'access arguments' => array(1),
+        'weight' => 30,
+        'type' => MENU_LOCAL_TASK,
+    );
+    $items['node/%/edit-field-drag-and-drop'] = array(
+        'title' => 'Drag and Drop Editor',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('eddy_seo_drag_and_drop_editor_edit', 1),
+        'access callback' => 'eddy_seo_drag_and_drop_editor_node_access',
+        'access arguments' => array(1),
+        'weight' => 30,
+        'type' => MENU_LOCAL_TASK,
+    );
+    $items['drag-and-drop-get-css/%/%'] = array(
+        'page callback' => '_eddy_seo_drag_and_drop_editor_get_css',
+        'page arguments' => array( 1,2),
+        'access callback' => true,
+    );
+
+
+
+
+    return $items;
+
+}
+
+/**
+ * Implements hook_permissions
+ * @return mixed
+ */
+function eddy_seo_drag_and_drop_editor_permission() {
+    return array(
+       'node_drag_and_drop' => array(
+         'title' => t('Node Drag and Drop'),
+         'description' => t('Use the Drag and Drop feature on certain nodes.'),
+       ),
+    );
+}
+
+/**
+ * Implements hook_admin_paths_alter()
+ */
+function eddy_seo_drag_and_drop_editor_admin_paths_alter(&$paths) {
+    $paths['node/*/edit-css'] = TRUE;
+
+}
+
+
+/*
+ * Implementation of hook_theme().
+ */
+function eddy_seo_drag_and_drop_editor_theme($existing, $type, $theme, $path){
+    return array(
+      'eddy_seo_drag_and_drop_editor_sidebar' => array(
+        'template' => 'left_side',
+        'variables' => array('valid_eddy_form' => true),
+      )
+   );
+}
+
+/**
+ * Implements hook_form_node_form_alter().
+ */
+function eddy_seo_drag_and_drop_editor_form_node_form_alter(&$form, $form_state) {
+
+    if($form['type']['#value'] == 'blank_slate_page'){
+
+        if(isset($form['body'])){
+            unset($form['body']);
+        }
+
+        if(isset($form['field_layout_editor_body'])){
+            unset($form['field_layout_editor_body']);
+        }
+    }
+
+    if(isset($form['field_custom_css'])){
+        unset($form['field_custom_css']);
+    }
+}
+
+
+/**
+ * Menu Access
+ */
+function eddy_seo_drag_and_drop_editor_node_access($nid){
+
+    $output = false;
+
+    if(user_access('node_drag_and_drop')) {
+
+        if(arg(0) == 'node'){
+
+            if(is_numeric($nid)){
+
+                $node = node_load($nid);
+
+                if($node->type == "blank_slate_page" && node_access('update', $node)){
+
+                    $output = true;
+
+                }
+            }
+        }
+    }
+
+    return $output;
+
+}
+
+//drupal_alter('ckeditor_security_filter', $security_filters);
+function eddy_seo_drag_and_drop_editor_ckeditor_security_filter_alter(&$security_filters)
+{
+    $security_filters['filters']['filter_html']= false;
+    //dpm($security_filters);
+    // dpm($conf);
+}
+//drupal_alter('ckeditor_settings', $settings, $conf);
+function eddy_seo_drag_and_drop_editor_ckeditor_settings_alter(&$settings, $conf)
+{
+    //dpm($settings);
+    // dpm($conf);
+}
+
+/**
+ * Callback for inline editing
+ */
+function eddy_seo_drag_and_drop_editor_edit($form, &$form_state) {
+
+    $node = node_load(arg(1));
+
+    eddy_seo_drag_and_drop_editor_set_node_properties($node);
+
+
+
+    //drupal_add_js(drupal_get_path('module', 'eddy_seo_drag_drop') . "/js/jquery-2.0.0.min.js");
+    drupal_add_css(drupal_get_path('module', 'eddy_seo_drag_and_drop_editor') . "/css/bootstrap-3.0.2.css", array('type' => 'file', 'group' => 900));
+    drupal_add_css(drupal_get_path('module', 'eddy_seo_drag_and_drop_editor') . "/css/eddy_seo_drag_and_drop_editor_style.css", array('type' => 'file', 'group' => 900));
+    drupal_add_css('//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css', array('type' => 'external', 'group' => CSS_THEME, 'weight' => 50, 'preprocess' => FALSE));
+    //drupal_add_js(drupal_get_path('module', 'eddy_seo_drag_and_drop_editor') . "/js/base_bootstrap.js");
+    //drupal_add_js(drupal_get_path('module', 'eddy_seo_drag_and_drop_editor') . "/js/bootstrap.min.js");
+
+    drupal_add_js(drupal_get_path('module', 'eddy_seo_drag_and_drop_editor') . "/js/jquery-ui.js");
+    drupal_add_js(drupal_get_path('module', 'eddy_seo_drag_and_drop_editor') . "/js/jquery.ui.touch-punch.min.js");
+    drupal_add_js(drupal_get_path('module', 'eddy_seo_drag_and_drop_editor') . "/js/jquery.htmlClean.js");
+    drupal_add_js(drupal_get_path('module', 'eddy_seo_drag_and_drop_editor') . "/js/scripts.js");
+    drupal_add_js(drupal_get_path('module', 'eddy_blank_slate_page') . '/js/blank_slate_page_form_wizard.js');
+    
+    $valid_eddy_form = true;
+    //check if eddy form is created
+    if(!eddy_forms_engine_get_form_fields()){
+        $valid_eddy_form = false;
+    }
+    $sidebar = theme('eddy_seo_drag_and_drop_editor_sidebar', array('valid_eddy_form' => $valid_eddy_form));
+    //dpm($sidebar);
+    $node_view = node_view($node);
+
+    $prefix = '<!-- Editor Modal -->
+<div class="modal fade" role="dialog" id="editorModal">
+
+    <div class="modal-dialog">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <a class="close" data-dismiss="modal">x</a>
+		        <p><strong>Edit Text Field</strong></p>
+	        </div>
+	        <div class="modal-body">';
+
+    $suffix = '</div>
+	        <div class="modal-footer">
+		        <a class="btn btn btn-primary" id="eddy-drag-drop-modal-save">Save</a>
+                <a class="btn btn-default" id="eddy-drag-drop-modal-cancel">Close</a>
+	        </div>
+
+        </div>
+
+    </div>
+
+</div>
+<!--/ Editor Modal -->';
+
+    $form['edit-modal'] = array(
+         '#type'=>'text_format',
+         '#format'=> 'full_html',
+         '#prefix' => $prefix,
+         '#suffix' => $suffix,
+    );
+
+    $form['actions-top'] = array(
+        '#type' => 'actions',
+        '#weight' => 0,
+        '#prefix' => '<div class="actions-holder container-inline" style="margin-top:10px;">',
+        '#suffix' => '</div>',
+    );
+
+	$form['actions-top']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Save'),
+		'#submit' => array('eddy_seo_drag_and_drop_editor_save'),
+        '#prefix' => '<div class="save-button-holder">',
+        '#suffix' => '</div>',
+	);
+
+	$form['actions-top']['cancel'] = array(
+		'#type' => 'submit',
+		'#limit_validation_errors' => array(),
+		'#value' => t('Cancel'),
+		'#submit' => array('eddy_seo_drag_and_drop_editor_cancel'),
+        '#prefix' => '<div class="cancel-button-holder">',
+        '#suffix' => '</div>',
+	);
+
+    $form['actions-top']['clear'] = array(
+		'#type' => 'submit',
+		'#limit_validation_errors' => array(),
+		'#value' => t('Clear'),
+        '#prefix' => '<div class="clear-button-holder">',
+        '#suffix' => '</div>',
+	);
+
+    $form['message-markup'] = array(
+        '#markup' => '<div class="warning-message-container alert alert-block alert-warning"></div>',
+    );
+
+    $body = "";
+
+    if(!empty($node->field_layout_editor_body[LANGUAGE_NONE][0]['value'])){
+        $body = $node->field_layout_editor_body[LANGUAGE_NONE][0]['value'];
+    }
+
+
+    $body = preg_replace('~>\\s+<~m', '><', $body );
+
+    $form['markup'] = array(
+        '#markup' => '<div class="edit builder">' . $sidebar . '<div class="demo ui-sortable" id="demo-inner-html" style="min-height: 791px;">' . $body . '</div></div>',
+    );
+
+    $form['page'] = array(
+        '#type' => 'textarea',
+        '#prefix' => '<div id="eddy-seo-drag-drop-raw-form" style="display:none">',
+        '#suffix' => '</div>',
+	);
+
+    $form['clean_page'] = array(
+		'#type' => 'textarea',
+        '#prefix' => '<div id="eddy-seo-drag-drop-clean-form" style="display:none">',
+        '#suffix' => '</div>',
+	);
+
+    $form['actions-bottom'] = array(
+        '#type' => 'actions',
+        '#prefix' => '<div class="actions-holder container-inline" style="margin-top:10px;">',
+        '#suffix' => '</div>',
+    );
+
+	$form['actions-bottom']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Save'),
+		'#submit' => array('eddy_seo_drag_and_drop_editor_save'),
+        '#prefix' => '<div class="save-button-holder">',
+        '#suffix' => '</div>',
+	);
+
+	$form['actions-bottom']['cancel'] = array(
+		'#type' => 'submit',
+		'#limit_validation_errors' => array(),
+		'#value' => t('Cancel'),
+		'#submit' => array('eddy_seo_drag_and_drop_editor_cancel'),
+        '#prefix' => '<div class="cancel-button-holder">',
+        '#suffix' => '</div>',
+	);
+
+    $form['download_layout'] = array(
+        '#markup' => '<div id="download-layout"></div>',
+    );
+
+    if($node->type == 'blank_slate_page'){
+
+        return $form;
+
+    }else{
+
+        drupal_access_denied();
+
+    }
+
+}
+
+
+function eddy_seo_drag_and_drop_editor_save($form, &$form_state){
+
+    $nid = arg(1);
+
+    $node = node_load($nid);
+
+    #TODO check to see if the user changes when nodes are saved.
+    global $user;
+    $node->uid = $user->uid;
+
+    if(isset($node->metatags)){
+        unset($node->metatags);
+    }
+    $type_name = node_type_get_name($node);
+
+    //Sets the body field to equal the HTML from the page field.
+    if(!empty($form_state['values']['page']) && !empty($form_state['values']['clean_page'])){
+
+        $node->field_layout_editor_body[LANGUAGE_NONE][0]['value'] = $form_state['values']['page'];
+        $node->field_layout_editor_body[LANGUAGE_NONE][0]['format'] = 'full_html';
+
+        $node->body[LANGUAGE_NONE][0]['value'] = $form_state['values']['clean_page'];
+        $node->body[LANGUAGE_NONE][0]['format'] = 'full_html';
+
+        $node = node_submit($node);
+
+        node_save($node);
+
+        
+
+        drupal_set_message("$type_name <em>$node->title</em> has been updated.");
+    }else{
+        drupal_set_message("$type_name <em>$node->title</em> has not been updated because the editor is empty.",'error');
+    }
+
+
+
+}
+
+function eddy_seo_drag_and_drop_editor_cancel($form, &$form_state){
+
+    $nid = arg(1);
+
+    drupal_set_message("no edits occured.");
+    drupal_goto("node/$nid");
+
+}
+/**
+ * Implements template_preprocess_node().
+ */
+function eddy_seo_drag_and_drop_editor_preprocess_node(&$vars) {
+    $node = $vars['node'];
+
+    if($node->type == 'blank_slate_page' && node_is_page($node)){
+        eddy_seo_drag_and_drop_editor_set_node_properties($node);
+    }
+}
+function eddy_seo_drag_and_drop_editor_set_node_properties($node){
+    if($node->type == 'blank_slate_page'){    
+        //dpm($node->field_featured_program_id[LANGUAGE_NONE][0]['value']);
+        if(!empty($node->field_page_form[LANGUAGE_NONE][0]['value'])){
+            
+            get_eddy_forms_engine_contents($node->field_page_form[LANGUAGE_NONE][0]['value']);
+            
+        }else
+        {
+            get_eddy_forms_engine_contents(0);
+        }
+        if(isset($node->field_custom_css['und'][0]['value'])){
+            drupal_add_css(url("drag-and-drop-get-css/$node->nid/$node->vid"),'external', array('weight' => 99999, 'preprocess' => FALSE));
+        }
+    }
+
+
+}
+
+function _eddy_seo_drag_and_drop_editor_get_css($nid, $vid){
+    $css_output = '';
+    if(is_numeric($nid)){
+        $nid = arg(1);
+        $node = node_load($nid);
+        if(!empty($node)){
+            if(isset($node->field_custom_css['und'][0]['value'])){
+                $css_output = $node->field_custom_css['und'][0]['value'];
+            }
+        }
+    }
+    drupal_add_http_header('Content-Type', 'text/css');
+    print $css_output;
+	drupal_exit();
+
+}
+
+/**
+ * Callback for css editing
+ */
+function eddy_seo_drag_and_drop_editor_edit_css($form, &$form_state) {
+
+    drupal_add_js(drupal_get_path('module', 'eddy_seo_drag_and_drop_editor') . '/lib/codemirror-3.11/lib/codemirror.js');
+    drupal_add_css(drupal_get_path('module', 'eddy_seo_drag_and_drop_editor') . '/lib/codemirror-3.11/lib/codemirror.css');
+    drupal_add_css(drupal_get_path('module', 'eddy_seo_drag_and_drop_editor') . '/css/codemirror_editor.css');
+    drupal_add_js(drupal_get_path('module', 'eddy_seo_drag_and_drop_editor') . '/js/codemirror_editor.js');
+    drupal_add_js(drupal_get_path('module', 'eddy_seo_drag_and_drop_editor') . '/lib/codemirror-3.11/mode/css/css.js');
+
+    $nid = arg(1);
+    $node = node_load($nid);
+
+    $preview_url = url('node/' . $nid);
+
+    $default_value = "";
+
+    if(!empty($node->field_custom_css[LANGUAGE_NONE][0]['value'])){
+        $default_value = $node->field_custom_css[LANGUAGE_NONE][0]['value'];
+    }
+
+    $form['field_custom_css'] = array(
+		'#type' => 'textarea',
+        '#prefix' => '<div id="css-editor-field">',
+        '#suffix' => '</div>',
+	    '#default_value' => $default_value,
+    );
+
+    $form['actions-bottom'] = array(
+        '#type' => 'actions',
+        '#prefix' => '<div class="actions-holder container-inline">',
+        '#suffix' => '</div><iframe src="' . $preview_url . '" id="css-editor-preview">' . t('Frames are not supported.') . '</iframe>',
+    );
+
+	$form['actions-bottom']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Save'),
+		'#submit' => array('eddy_seo_drag_and_drop_editor_save_css'),
+        '#prefix' => '<div class="save-button-holder">',
+        '#suffix' => '</div>',
+	);
+
+	$form['actions-bottom']['cancel'] = array(
+		'#type' => 'submit',
+		'#limit_validation_errors' => array(),
+		'#value' => t('Cancel'),
+		'#submit' => array('eddy_seo_drag_and_drop_editor_cancel'),
+        '#prefix' => '<div class="cancel-button-holder">',
+        '#suffix' => '</div>',
+	);
+
+    return $form;
+
+}
+
+function eddy_seo_drag_and_drop_editor_save_css($form, &$form_state){
+
+    $nid = arg(1);
+
+    $node = node_load($nid);
+
+    #TODO check to see if the user changes when nodes are saved.
+    global $user;
+    $node->uid = $user->uid;
+
+    if(isset($node->metatags)){
+        unset($node->metatags);
+    }
+
+    $node->field_custom_css[LANGUAGE_NONE][0]['value'] = $form_state['values']['field_custom_css'];
+
+    $node = node_submit($node);
+    node_save($node);
+
+    $type_name = node_type_get_name($node);
+
+    drupal_set_message("$type_name <em>$node->title</em> has been updated.");
+    drupal_goto("node/$nid");
+
+}
+
+function eddy_seo_drag_and_drop_editor_eddy_forms_engine_alter(&$form_info){
+
+    $append_original_trackid = '
+                    (function(){
+                        if(FormsEngine.hasOwnProperty("WorkflowManagedChoicePage")){
+                            if(FormsEngine.WorkflowManagedChoicePage.indexOf("original_trackid") == -1){
+                                if(FormsEngine.WorkflowManagedChoicePage.indexOf("?") == -1){
+                                    FormsEngine.WorkflowManagedChoicePage = FormsEngine.WorkflowManagedChoicePage + "?original_trackid=" + FormsEngine.TrackId;
+                                }else{
+                                    FormsEngine.WorkflowManagedChoicePage = FormsEngine.WorkflowManagedChoicePage + "&original_trackid=" + FormsEngine.TrackId;
+                                }
+                            }
+                        }
+                        if(FormsEngine.hasOwnProperty("WorkflowThankYouPage")){
+                            if(FormsEngine.WorkflowThankYouPage.indexOf("original_trackid") == -1){
+                                if(FormsEngine.WorkflowThankYouPage.indexOf("?") == -1){
+                                    FormsEngine.WorkflowThankYouPage = FormsEngine.WorkflowThankYouPage + "?original_trackid=" + FormsEngine.TrackId;
+                                }else{
+                                    FormsEngine.WorkflowThankYouPage = FormsEngine.WorkflowThankYouPage + "&original_trackid=" + FormsEngine.TrackId;
+                                }
+                            }
+                        }
+                        if(FormsEngine.hasOwnProperty("WorkflowNoMatchPage")){
+                            if(FormsEngine.WorkflowNoMatchPage.indexOf("original_trackid") == -1){
+                                if(FormsEngine.WorkflowNoMatchPage.indexOf("?") == -1){
+                                    FormsEngine.WorkflowNoMatchPage = FormsEngine.WorkflowNoMatchPage + "?original_trackid=" + FormsEngine.TrackId;
+                                }else{
+                                    FormsEngine.WorkflowNoMatchPage = FormsEngine.WorkflowNoMatchPage + "&original_trackid=" + FormsEngine.TrackId;
+                                }
+                            }
+                        }
+                    }());
+
+                ';
+
+
+    if(arg(0) == 'node'){
+        $nid = arg(1);
+        if(is_numeric($nid)){
+            $node = node_load($nid);
+
+            if($node->nid > 0 && node_is_page($node)){
+
+                $campaign_track_id='';
+                switch($node->type){
+                    case'blank_slate_page':
+
+                        if (!empty( $node->field_institution_from_is[LANGUAGE_NONE][0]['value']))
+                        {
+
+                            $institution_details = eddy_services_get_institution_details($node->field_institution_from_is[LANGUAGE_NONE][0]['value']);
+
+                            if(!empty($institution_details->GetInstitutionDetailsResult->InstitutionDetails->InstitutionName)){
+
+                                $institution_name = check_plain($institution_details->GetInstitutionDetailsResult->InstitutionDetails->InstitutionName);
+
+                                $institution_id = $node->field_institution_from_is[LANGUAGE_NONE][0]['value'];
+                                $form_info .= "FormsEngine.InstitutionId = $institution_id;\n";
+                                $form_info .= "FormsEngine.InstitutionName = '$institution_name';\n";
+
+                                if (!empty($node->field_featured_program_id[LANGUAGE_NONE][0]['value']))
+                                {
+                                    $featured_program_id = $node->field_featured_program_id[LANGUAGE_NONE][0]['value'];
+                                    $form_info .= "FormsEngine.ProgramId = $featured_program_id;\n";
+
+                                }
+
+                            }
+
+                        }
+
+                        $qs = array_change_key_case(drupal_get_query_parameters(),CASE_LOWER);
+
+                        if(in_array('original_trackid', array_keys($qs))){
+                            $campaign_track_id = $qs['original_trackid'];
+                            $form_info .= "FormsEngine.TrackId = '$campaign_track_id';\n";
+                        }else{
+                            if (property_exists($node, 'field_campaign_track_id'))
+                            {
+                                if (count( $node->field_campaign_track_id))
+                                {
+                                    $campaign_track_id = $node->field_campaign_track_id[LANGUAGE_NONE][0]['value'];
+                                    $form_info .= "FormsEngine.TrackId = '$campaign_track_id';\n";
+
+                                }
+                            }
+                        }
+
+                        $form_info .= $append_original_trackid;
+
+                        break;
+                    case 'form_redirect_content_page':
+                        $qs = array_change_key_case(drupal_get_query_parameters(),CASE_LOWER);
+                        if(in_array('original_trackid', array_keys($qs))){
+                            $campaign_track_id = $qs['original_trackid'];
+                            $form_info .= "FormsEngine.TrackId = '$campaign_track_id';\n";
+
+                            $form_info .= $append_original_trackid;
+
+                        }
+                        break;
+
+                }
+
+            }
+
+        }
+    }
+
+}

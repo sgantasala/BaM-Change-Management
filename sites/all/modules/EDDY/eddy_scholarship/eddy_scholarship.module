@@ -1,0 +1,149 @@
+<?php
+function eddy_scholarship_ds_layout_info()
+{
+    $path = drupal_get_path('module', 'eddy_scholarship');
+    $layout_templates_root = $path . '/layouts';
+    
+    $layouts['eddy_scholarship_layout_bootstrap'] = array(
+      'label' => t('Eddy scholarship layout bootstrap'),
+      'path' => $layout_templates_root,
+      'regions' => array(
+        'webform_title' => t('webform_title'),
+        'webform_header_content_region' => t('webform_header_content_region'),
+        'webform_region' => t('webform_region'),
+        'webform_footer_content_region' => t('webform_footer_content_region'),
+        'content_region' => t('content_region')
+      ),
+      'form' => TRUE,
+      'image' => TRUE,
+    );
+    return $layouts;
+}
+
+function eddy_scholarship_preprocess_node(&$vars){    
+    //scholarship page ui support
+
+    if(node_is_page($vars['node']))
+    {
+        //scholarship_form
+        if($vars['node']->type == 'scholarship_contest_page'){
+            //format header image bg
+            if(isset($vars['node']->field_form_background_image[LANGUAGE_NONE][0]['uri'])){
+                drupal_add_css('.scholarship-header-image { clear: both; height: 600px; margin-top: 10px !important;  background: url("'.file_create_url($vars['node']->field_form_background_image[LANGUAGE_NONE][0]['uri']).'") no-repeat; background-color: #000;  background-size: 1120px 600px;}','inline');
+                drupal_add_css('@media (min-width: 1024px){.scholarship-form-container{margin-top: -585px;}}','inline');
+            }
+            else
+            {
+                drupal_add_css('.scholarship-header-image { display:none;}','inline');
+            }
+            
+        }
+    }
+}
+
+function eddy_scholarship_preprocess_webform_form(&$vars) 
+{
+    if(isset($vars['form']))
+    {
+        if(isset($vars['form']['submitted']))
+        {
+            if(isset($vars['form']['submitted']['Source']))
+            {
+                if(isset($vars['form']['submitted']['Source']['#value']))
+                {
+                    if($vars['form']['submitted']['Source']['#value'] == 'scholarship_form')
+                    {
+                        $two_column_md = 'col-xs-12 col-sm-12 col-md-6';
+                        $one_column_md = 'col-xs-12 col-sm-12 col-md-12';
+                        //dpm($vars['form']['submitted']);
+                        foreach($vars['form']['submitted'] as $key=>$value) { 
+                            if(isset($vars['form']['submitted'][$key]))
+                            {
+                                if(isset($vars['form']['submitted'][$key]['#type']))
+                                {
+                                    switch($vars['form']['submitted'][$key]['#type'])
+                                    {
+                                   
+                                        case 'select' :
+                                            switch ($key){
+                                        case 'EducationLevel':
+                                        case 'MilitaryAffiliation':    
+                                            $vars['form']['submitted'][$key]['#options'][""] =  $vars['form']['submitted'][$key]['#title'];
+                                            }
+                                            
+                                        case 'textfield' :
+                                        case 'webform_email':
+                                        case 'checkboxes':
+                                            switch($key)
+                                            {
+                                                case 'FirstName' :
+                                                case 'LastName' :
+                                                case 'EducationLevel' :
+                                                case 'PostalCode' :
+                                                case 'Email' :
+                                                case 'Phone' :
+                                                    $vars['form']['submitted'][$key]['#prefix'] = '<div class="'.$two_column_md.'">';
+                                                    $vars['form']['submitted'][$key]['#suffix'] = '</div>';   
+                                                    break;
+                                                default:
+                                                    $vars['form']['submitted'][$key]['#prefix'] = '<div class="clearfix"></div><div class="'.$one_column_md.'">';
+                                                    $vars['form']['submitted'][$key]['#suffix'] = '</div>'; 
+                                            }
+                                            break;
+                                    }
+                                }
+                            }  
+                        } 
+                    }
+                }
+            }
+        }
+    }
+}
+
+function eddy_scholarship_form_alter(&$form, &$form_state, $form_id)
+{
+    if(isset($form['submitted']['Source']))
+    {
+        if(isset($form['submitted']['Source']['#value']))
+        {
+            if($form['submitted']['Source']['#value'] == 'scholarship_form')
+            {
+                $form['#validate'][]='eddy_scholarship_form_validate';
+                return $form;
+            }
+        }
+    }
+}
+
+function eddy_scholarship_form_validate(&$form, &$form_state){
+    
+    if(isset($form['submitted']['Source']))
+    {
+        if(isset($form['submitted']['Source']['#value']))
+        {
+            if($form['submitted']['Source']['#value'] == 'scholarship_form')
+            {
+                $phone = $form_state['input']['submitted']['Phone'];  
+
+                $request_phone = drupal_http_request(variable_get("eddy_forms_engine_service_domain") . "/FormValidation/PhoneNumberCheck/?CountryCode=US&PhoneNumber=" . urlencode($phone) . "&callback=scholarship");
+                $result_phone = str_replace(');','',str_replace('scholarship(','',$request_phone->data));
+                
+                $zipcode = $form_state['values']['submitted']['PostalCode'];            
+                $request_zipcode = drupal_http_request(variable_get("eddy_forms_engine_service_domain") . "/FormValidation/ZipCodeStateCountryCheck/?CountryCode=US&ZipCode=" . urlencode($zipcode) . "&callback=scholarship");
+                $result_zipcode = str_replace(');','',str_replace('scholarship(','',$request_zipcode->data));
+                if($result_phone == "false"){
+                    $error_msg = $phone . " is not a valid Phone.\n";
+                    form_set_error('submitted][Phone', t($error_msg));
+                }
+                if($result_zipcode == "false"){
+                    
+                    $error_msg = $zipcode . " is not a valid Postal Code. \n";//07.$&#.030 will make validation failed.
+                    form_set_error('submitted][PostalCode', t($error_msg));
+                }
+            }
+        }
+    }
+}
+
+

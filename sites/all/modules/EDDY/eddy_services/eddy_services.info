@@ -1,0 +1,4 @@
+name = Eddy Services
+description = Some generic methods for calling IS services. Supported methods are: GetProgramSearch, GetInstitutionSearch, GetProgramLevels, GetCategories, GetSubjects and GetProgramTypes.
+core = 7.x
+package = Eddy Core Business

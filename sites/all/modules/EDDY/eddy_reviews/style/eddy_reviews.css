@@ -1,0 +1,53 @@
+@import url("https://maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.css");
+#eddy_reviews_container .review-rating .form-type-radio{
+    display:inline;
+    padding-left:0;
+}
+#eddy_reviews_container .review-rating .form-type-radio label{
+    cursor:pointer;
+}
+#eddy_reviews_container .review-rating .form-type-radio label::before{
+    content:"\f006";
+    display: inline-block;
+    font: normal normal normal 20px/1 FontAwesome;
+    text-rendering: auto;
+    -webkit-font-smoothing: antialiased;
+    color:#999;
+}
+#eddy_reviews_container .review-rating .form-type-radio input{
+    display:none;
+}
+
+#eddy_reviews_container .review-rating .form-type-radio input[type="radio"]:checked + label:before,
+#eddy_reviews_container .review-rating .form-type-radio.rated label:before{
+    content:"\f005";
+    color:#FFBC2F;
+}
+
+.avg-rating{
+    padding:0;
+    font-size:inherit;
+}
+.avg-rating > *,
+.review-rating > *{
+    margin-right:2px;
+}
+.avg-rating .score{
+    margin-right:5px;
+}
+
+.review-rating .score{
+    float:right;
+    margin-left:2px;
+    font-weight:bold;
+}
+i.fa[class*="fa-star"]{
+    color:#FFBE30;
+}
+.review-description p{
+    display:inline;
+}
+.review-description .collapsed{
+    display:none;
+}
+/*************/
