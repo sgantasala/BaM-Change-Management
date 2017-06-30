@@ -1,0 +1,99 @@
+<?php
+
+
+/**
+ * Implements hook_menu().
+ */
+function eddy_sharing_tools_menu() {
+    $items['admin/config/system/eddy-sharing-tool-settings'] = array(
+      'title' => 'EDDY Sharing Tools Settings',
+      'description' => 'Configure Sharing Tools on the Site.',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('eddy_sharing_tools_form'),
+      'access arguments' => array('administer_eddy_sharing_tools_settings'),
+      'type' => MENU_NORMAL_ITEM,
+    );
+
+    return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function eddy_sharing_tools_permission() {
+    return array(
+      'administer_eddy_sharing_tools_settings' => array(
+        'title' => 'Administer Sharing Tools settings.'
+      ),
+    );
+}
+
+
+/**
+ * Configure ShareTools settings.
+ */
+function eddy_sharing_tools_form($form, &$form_state) {
+
+    $form['sharing_tools_pubid'] = array(
+		'#type' => 'textfield',
+		'#title' => t('HELLOOOOOOOOOO.... Pubid:'),
+		'#default_value' => (variable_get('sharing_tools_pubid')=='')?'':variable_get('sharing_tools_pubid'),
+		'#maxlength' => 255,
+		'#size' => 100,
+	);
+    $node_types = node_type_get_names();
+    $form['sharing_tools_types'] = array(
+      '#type' => 'checkboxes',
+      '#title' => t('Sahring tools enabled content types'),
+      '#description' => t('Choose the types on which you would like to display Sharing Tools.'),
+      '#options' => $node_types,
+      '#default_value' => (variable_get('sharing_tools_node_types')=='')?'':variable_get('sharing_tools_node_types'),
+    );
+
+    $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Submit'),
+      '#weight' => 9999,
+    );
+
+  return $form;
+
+}
+
+/**
+ * Implements hook_form_submit().
+ */
+function eddy_sharing_tools_form_submit($form, &$form_state){
+
+    // Change the name of the node type variable and clean it up.
+    $sharing_tools_node_types = array_keys(array_filter($form_state['values']['sharing_tools_types']));
+    unset($form_state['values']['sharing_tools_types']);
+
+    //Setting Sharing tools varibles
+    variable_set('sharing_tools_pubid', $form_state['values']['sharing_tools_pubid']);
+    variable_set('sharing_tools_node_types', $sharing_tools_node_types);
+
+    drupal_set_message(t('The sharing Tools settings have been saved.'));
+}
+
+/**
+ * Implements hook_preprocess_page().
+ */
+function eddy_sharing_tools_preprocess_page(&$variables) {
+
+    if(!path_is_admin(current_path())){
+
+        if(!empty(variable_get("sharing_tools_pubid"))){
+            if(isset($variables['node']) && in_array( $variables['node']->type, variable_get("sharing_tools_node_types")) ){
+
+                if(!isset($variables['node']->field_turn_off_sharing_tools) ||
+                    (isset($variables['node']->field_turn_off_sharing_tools) && $variables['node']->field_turn_off_sharing_tools[LANGUAGE_NONE][0]['value'] == FALSE)){
+
+                        $share_script = '//s7.addthis.com/js/300/addthis_widget.js#pubid=' . variable_get("sharing_tools_pubid");
+
+                        drupal_add_js($share_script, array( 'type' => 'external', 'weight' => 999, 'scope' => 'footer', 'group' => 300));
+                }
+            }
+        }
+    }
+}
