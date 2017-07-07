@@ -1,4 +1,0 @@
-name = Basic Environment Restore
-description = This module is used for updating QA, DEV and local environments. <strong style="color:#cc0000;">This module should never be run on Prod</strong>, the results could be catastrophic!
-core = 7.x
-package = EDDY Updates

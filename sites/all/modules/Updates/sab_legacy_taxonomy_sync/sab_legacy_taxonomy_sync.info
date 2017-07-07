@@ -1,4 +1,0 @@
-name = SAB Legacy Taxonomy
-description = All Scripts used to insert SAB Resource Content from Legacy Databases.
-core = 7.x
-package = EDDY Updates

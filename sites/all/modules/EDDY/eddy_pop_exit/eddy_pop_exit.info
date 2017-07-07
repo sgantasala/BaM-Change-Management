@@ -1,9 +1,0 @@
-name = EDDY Exit Pop up Ad Creator
-description = Adds an Exit pop to the Form Pages.
-core = 7.x
-package = Eddy Core Business
-
-dependencies[] = eddy_tracking
-dependencies[] = eddy_core
-
-Version = "7.x-1.02"

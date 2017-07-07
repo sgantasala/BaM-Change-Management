@@ -1,9 +1,0 @@
-#eddy-schema-org-get-form .json-ld-script,
-#eddy-schema-org-get-form .json-ld-form-fields {
-    display: inline-block;
-    vertical-align: top;
-    width: 50%; 
-}
-#eddy-schema-org-get-form .json-ld-form-fields #wrapper {
-    width: 55%; 
-} 

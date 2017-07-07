@@ -1,7 +1,0 @@
-name = SAB Meta Tags
-description = A module which contains Custom Metatags for the SAB site.
-core = 7.x
-
-package = Eddy Core Business
-
-dependencies[] = eddy_core

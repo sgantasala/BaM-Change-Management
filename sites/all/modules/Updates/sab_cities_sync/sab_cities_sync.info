@@ -1,7 +1,0 @@
-name = SAB Cities Sync
-description = "Syncs Cities from IS to Drupal."
-
-core = 7.x
-package = Eddy Core Business
-
-dependencies[] = sab_listing

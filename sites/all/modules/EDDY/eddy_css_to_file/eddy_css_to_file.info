@@ -1,7 +1,0 @@
-name = Global CSS to File
-description = This is a module to enable to put Customized CSS from theme into a dynamic style.css.
-core = 7.x
-package = Eddy Core Business
-version = "7.x-1.0"
-
-dependencies[] = css_editor

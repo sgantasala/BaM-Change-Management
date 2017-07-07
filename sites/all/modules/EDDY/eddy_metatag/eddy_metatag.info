@@ -1,6 +1,0 @@
-name = EDDY Metatags
-description = "Provides additional meta tag fields customized for the EDDY team."
-package = Eddy Core Business
-core = 7.x
-dependencies[] = metatag
-Version = "7.x-2.0"

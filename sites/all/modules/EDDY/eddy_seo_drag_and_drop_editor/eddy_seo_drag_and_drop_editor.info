@@ -1,7 +1,0 @@
-name = EDDY SEO Drag and Drop Editor
-description = Provides a Drag and Drop interface for the "drag_and_drop" field.
-core = 7.x
-package = Eddy Core Business
-
-dependencies[] = eddy_blank_slate_page
-dependencies[] = eddy_forms_engine

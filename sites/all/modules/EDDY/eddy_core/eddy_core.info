@@ -1,6 +1,0 @@
-name = Eddy Core Library
-description = A library of core functions and static variables which can be used by any module
-core = 7.x
-package = Eddy Core Business
-Version = "7.x-2.3"
-scripts[] = eddy_core.js

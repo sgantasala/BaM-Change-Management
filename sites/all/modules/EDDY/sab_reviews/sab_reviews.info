@@ -1,7 +1,0 @@
-name = SAB Reviews
-description = Adds some SAB specific review features.
-core = 7.x
-package = Eddy Core Business
-version = "7.x-1.0"
-
-dependencies[] = eddy_reviews

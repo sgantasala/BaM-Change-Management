@@ -1,5 +1,0 @@
-name = SAB Institution Sync
-description = "Syncs Institutions from IS to Drupal."
-dependencies[] = eddy_services
-core = 7.x
-package = Eddy Core Business

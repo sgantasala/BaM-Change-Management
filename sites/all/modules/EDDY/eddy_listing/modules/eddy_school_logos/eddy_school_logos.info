@@ -1,9 +1,0 @@
-name = List of School Logos
-description = "A simple module to see all school logos for the current application."
-dependencies[] = eddy_listing
-dependencies[] = workbench_moderation
-core = 7.x
-package = Eddy Core Business
-
-dependencies[] = eddy_core
-dependencies[] = eddy_listing

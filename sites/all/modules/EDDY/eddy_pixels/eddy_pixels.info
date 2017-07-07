@@ -1,6 +1,0 @@
-name = EDDY Pixels
-description = Administer EDDY Pixel Settings.
-core = 7.x
-package = Eddy Core Business
-
-

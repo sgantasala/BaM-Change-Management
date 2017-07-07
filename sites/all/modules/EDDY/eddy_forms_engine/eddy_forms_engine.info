@@ -1,8 +1,0 @@
-name = Eddy Forms Engine
-description = This is a module to load the form from Forms Engine
-core = 7.x
-package = Eddy Core Business
-Version = "7.x-2.9"
-
-dependencies[] = eddy_services
-dependencies[] = devel

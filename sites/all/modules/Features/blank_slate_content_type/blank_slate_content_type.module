@@ -1,7 +1,0 @@
-<?php
-/**
- * @file
- * Code for the Blank Slate Content Type feature.
- */
-
-include_once 'blank_slate_content_type.features.inc';

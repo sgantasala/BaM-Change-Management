@@ -1,9 +1,0 @@
-name = SAB Faceted Navigation
-description = Provides a page and some Program Detail Helper Functions.
-core = 7.x
-
-package = Eddy Core Business
-
-dependencies[] = eddy_services
-dependencies[] = eddy_listing
-dependencies[] = sab_product_list

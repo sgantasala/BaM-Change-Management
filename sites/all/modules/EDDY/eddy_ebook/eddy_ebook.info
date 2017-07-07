@@ -1,6 +1,0 @@
-name = Eddy Ebook
-description = Eddy Ebook Module
-core = 7.x
-package = Eddy Core Business
-
-stylesheets[all][] = style/eddy_ebook_style_bootstrap.css

@@ -1,4 +1,0 @@
-name = Eddy Blank Slate Page
-description = Module that controls and creates landing pages for specified URL
-core = 7.x
-package = Eddy Core Business
